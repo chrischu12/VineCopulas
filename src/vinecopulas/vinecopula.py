@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# %%
 """
 Created on Thu Feb 22 16:40:09 2024
 
@@ -14,34 +15,116 @@ import scipy.stats as st
 from itertools import product
 import networkx as nx
 import matplotlib.pyplot as plt
+import os
+import importlib
+import sys
+
+
+#  Add your local package to the path
+ondil_path = r"C:\Users\OEK-admin\OneDrive\Arbeit_Uni\Uni_Due\Project II\ondil"
+if ondil_path not in sys.path:
+    sys.path.insert(0, ondil_path)
+
+
+#  Import ondil classes
+ondil_src_path = os.path.join(ondil_path, "src")
+if ondil_src_path not in sys.path:
+    sys.path.insert(0, ondil_src_path)
+
+from ondil.estimators import MultivariateOnlineDistributionalRegressionPath
+from ondil.links import  GumbelLink, FisherZLink, KendallsTauToParameter, KendallsTauToParameterClayton, Log, KendallsTauToParameterGumbel, LogShiftTwo
+from ondil.distributions import BivariateCopulaNormal, BivariateCopulaClayton, BivariateCopulaGumbel, BivariateCopulaStudentT
+
+vinecopulas_path = r"C:\Users\OEK-admin\OneDrive\Arbeit_Uni\Uni_Due\Project II\VineCopulas"
+vinecopulas_src_path = os.path.join(vinecopulas_path, "src")
+if vinecopulas_src_path not in sys.path:
+    sys.path.insert(0, vinecopulas_src_path)
+
+from vinecopulas.vinecopula import *
 from vinecopulas.bivariate import *
+
+
 
 # %% Copulas
 
 copulas = {
     1: "Gaussian",
-    2: "Gumbel0",
-    3: "Gumbel90",
-    4: "Gumbel180",
-    5: "Gumbel270",
-    6: "Clayton0",
-    7: "Clayton90",
-    8: "Clayton180",
-    9: "Clayton270",
-    10: "Frank",
-    11: "Joe0",
-    12: "Joe90",
-    13: "Joe180",
-    14: "Joe270",
-    15: "Student",
+    2: "StudentT",
+    31: "Clayton I",
+    32: "Clayton II",
+    33: "Clayton III",
+    34: "Clayton IV",
+    41: "Gumbel I",
+    42: "Gumbel II",
+    43: "Gumbel III",
+    44: "Gumbel IV",
 }
+
+
+copula_distributions = {
+    1: BivariateCopulaNormal(
+    link=FisherZLink(),
+    param_link=KendallsTauToParameter()
+), 
+    2: BivariateCopulaStudentT(
+    link_1 = FisherZLink(),
+    link_2 = LogShiftTwo(),
+    param_link_1 = KendallsTauToParameter(),
+    param_link_2 = KendallsTauToParameter(),
+),  
+    31: BivariateCopulaClayton(
+    link= Log(),
+    param_link=KendallsTauToParameterClayton(),
+    family_code = 31,
+), 
+    32: BivariateCopulaClayton(
+    link= Log(),
+    param_link=KendallsTauToParameterClayton(),
+    family_code = 32,
+), 
+    33: BivariateCopulaClayton(
+    link= Log(),
+    param_link=KendallsTauToParameterClayton(),
+    family_code = 33,
+), 
+    34: BivariateCopulaClayton(
+    link= Log(),
+    param_link=KendallsTauToParameterClayton(),
+    family_code = 34,
+), 
+
+    41: BivariateCopulaGumbel(
+    link=GumbelLink(),
+    param_link=KendallsTauToParameterGumbel(),
+    family_code=41,
+),
+
+    42: BivariateCopulaGumbel(
+    link=GumbelLink(),
+    param_link=KendallsTauToParameterGumbel(),
+    family_code=42,
+),
+    43: BivariateCopulaGumbel(
+    link=GumbelLink(),
+    param_link=KendallsTauToParameterGumbel(),
+    family_code=43,
+),    
+
+    44: BivariateCopulaGumbel(
+    link=GumbelLink(),
+    param_link=KendallsTauToParameterGumbel(),
+    family_code=44,
+),
+}
+
+
+
 
 # %% fitting vinecopula
 
-
-def fit_vinecop(u1, copsi, vine="R", printing=True):
+def fit_vinecop(u1, X, copsi, vine="R", printing=True, distribution=None, estimator=None):
     """
-    Fit a regular vine copula to data.
+    Fit a regular vine copula to data with early stopping based on log-likelihood improvement.
 
     Arguments:
         *u1* :  the data, provided as a numpy array where each column contains a separate variable (eg. u1,u2,...,un), which have already been transferred to standard uniform margins (0<= u <= 1)
@@ -51,7 +134,8 @@ def fit_vinecop(u1, copsi, vine="R", printing=True):
         *vine* : The type of vine copula that needs to be fit, either 'R', 'D', or 'C'
 
         *printing*: True if the fitted copula should be printed and False if not
-
+        
+        *min_ll_increase*: Minimum log-likelihood increase required to continue to next tree (default: 1e-3)
 
     Returns:
      *a* : The vine tree structure provided as a triangular matrix, composed of integers. The integer refers to different variables depending on which column the variable was in u1, where the first column is 0 and the second column is 1, etc.
@@ -81,7 +165,6 @@ def fit_vinecop(u1, copsi, vine="R", printing=True):
     order1 = order1.sort_values(by="tauabs", ascending=False).reset_index(
         drop=True
     )  # sort this dataframe from highest to lowest tauabs
-
     # R vine
     if vine == "R":
         inde = []  # list to put used rows of order1 in
@@ -257,21 +340,25 @@ def fit_vinecop(u1, copsi, vine="R", printing=True):
     order1 = order2  # make order1 == the first tree
     del order2
     rhos = []  # list for the rhos
+    coefs = []
     node = []  # list for the nodes
     cops = []  # list for the copulas
     v1_1 = []  # list for the 1st nodes
     v2_1 = []  # list for the 2nd nodes
     aics = []  # list for the AIC's
+    logliks = []  # list for the log-likelihoods
     for i in range(len(order1)):
         v1i = int(order1.v1[i])  # first node
         v2i = int(order1.v2[i])  # second node
         u3 = np.vstack(
             (u1[:, v1i], u1[:, v2i])
         ).T  # stacking the combination to fit copula to
-        cop, rho, aic = bestcop(copsi, u3)  # fit the best copula
+        cop, distribution, rho, aic, coef, loglik = bestcop(copsi, u3, X, estimator)  # fit the best copula
         aics.append(aic)  # add AIC to aics
         rhos.append(rho)  # add parameters to rhos
+        coefs.append(coef)
         cops.append(cop)  # add copula to cops
+        logliks.append(loglik)  # add log-likelihood to logliks
         node.append([v1i, v2i])  # create final node
         v1_1.append(u1[:, v1i])  # add array of first node
         v2_1.append(u1[:, v2i])  # add array of second node
@@ -280,21 +367,26 @@ def fit_vinecop(u1, copsi, vine="R", printing=True):
 
     # add information to dataframe of the first tree
     order1["rhos"] = rhos
+    order1["coefs"] = coefs
     order1["node"] = node
     order1["tree"] = 0
     order1["cop"] = cops
     order1["AIC"] = aics
+    order1["loglik"] = logliks
+
 
     # set up variables for the second tree
     v1 = []
     v2 = []
     ktau = []
     rhos = []
+    coefs = []
     node = []
     cops = []
     v1_k = []
     v2_k = []
     aics = []
+    logliks = []
     for i in range(
         len(order1) - 1
     ):  # loop through the first tree to identify all possible combination of nodes
@@ -341,8 +433,9 @@ def fit_vinecop(u1, copsi, vine="R", printing=True):
                 unj = 2
                 vj1 = v1j
             # calculate the conditional CDF
-            v1igs = hfunc(copi, ui1, ui2, pari, un=uni)
-            v2jgs = hfunc(copj, uj1, uj2, parj, un=unj)
+            print(distribution)
+            v1igs = hfunc(copi, ui1, ui2, pari, un=uni, distribution=distribution)
+            v2jgs = hfunc(copj, uj1, uj2, parj, un=unj, distribution=distribution)
             ktau.append(
                 abs(st.kendalltau(v1igs, v2jgs)[0])
             )  # calculate the absolute kendall tau between v1igs and v2jgs, add it to the ktau list
@@ -570,17 +663,23 @@ def fit_vinecop(u1, copsi, vine="R", printing=True):
         u3 = np.vstack(
             (v1_2[:, i], v2_2[:, i])
         ).T  # stacking the combination to fit copula to
-        cop, rho, aic = bestcop(copsi, u3)  # fit the best copula
+        cop, distribution, rho, aic, coef, loglik = bestcop(copsi, u3, X, estimator)  # fit the best copula
         aics.append(aic)  # add AIC to aics
         rhos.append(rho)  # add parameters to rhos
         cops.append(cop)  # add copula to cops
+        coefs.append(coef)  # add coefficients to coefs
+        logliks.append(loglik)  # add log-likelihood to logliks
 
     # add information to dataframe of tree k
     order2["rhos"] = rhos
     order2["cop"] = cops
     order2["AIC"] = aics
+    order2["coefs"] = coefs
+    order2["loglik"] = logliks
 
-    # loop through remaining trees if there are more than 3 variables
+
+
+    # loop through remaining trees if there are more than 3 variables and not early stopped
     if dimen > 3:
         for k in range(3, dimen):
             order = locals()[
@@ -599,10 +698,12 @@ def fit_vinecop(u1, copsi, vine="R", printing=True):
             v2 = []
             ktau = []
             rhos = []
+            coefs = []
             cops = []
             node = []
             lk = []
             aics = []
+            logliks = []
             rk = []
             for i in range(len(order) - 1):
                 v1i = order.v1[i].copy()  # parent node 1 from nodei in tree
@@ -690,8 +791,8 @@ def fit_vinecop(u1, copsi, vine="R", printing=True):
                         unj = 1
 
                     # calculate the conditional CDF
-                    v1igs = hfunc(copi, ui1, ui2, pari, un=uni)
-                    v2jgs = hfunc(copj, uj1, uj2, parj, un=unj)
+                    v1igs = hfunc(copi, ui1, ui2, pari, un=uni, distribution=distribution)
+                    v2jgs = hfunc(copj, uj1, uj2, parj, un=unj, distribution=distribution)
                     ktau.append(
                         abs(st.kendalltau(v1igs, v2jgs)[0])
                     )  # calculate the absolute kendall tau between v1igs and v2jgs, add it to the ktau list
@@ -875,19 +976,33 @@ def fit_vinecop(u1, copsi, vine="R", printing=True):
                     ).T  # sort array of second node
                     orderk = orderk.reset_index(drop=True)
                     orderk["tree"] = k - 1
+                    
+                    # Fit copulas for this tree
+                    tree_aics = []
+                    tree_logliks = []
+                    tree_rhos = []
+                    tree_cops = []
+                    tree_coefs = []
+                    
                     for j in range(len(orderk)):
                         u3 = np.vstack(
                             (v1_k[:, j], v2_k[:, j])
                         ).T  # stacking the combination to fit copula to
-                        cop, rho, aic = bestcop(copsi, u3)  # fit the best copula
-                        aics.append(aic)  # add AIC to aics
-                        rhos.append(rho)  # add parameters to rhos
-                        cops.append(cop)  # add copula to cops
+                        cop, distribution, rho, aic, coef, loglik = bestcop(copsi, u3, X, estimator)  # fit the best copula
+                        tree_aics.append(aic)  # add AIC to aics
+                        tree_rhos.append(rho)  # add parameters to rhos
+                        tree_cops.append(cop)  # add copula to cops
+                        tree_coefs.append(coef)  # add coefficients to coefs
+                        tree_logliks.append(loglik)  # add log-likelihood to logliks
+
+                  
 
                     # add information to dataframe of tree k
-                    orderk["rhos"] = rhos
-                    orderk["cop"] = cops
-                    orderk["AIC"] = aics
+                    orderk["rhos"] = tree_rhos
+                    orderk["cop"] = tree_cops
+                    orderk["AIC"] = tree_aics
+                    orderk["loglik"] = tree_logliks
+                    orderk["coefs"] = tree_coefs
                     locals()["v1_" + str(k)] = v1_k
                     locals()["v2_" + str(k)] = v2_k
                     locals()["order" + str(k)] = orderk
@@ -905,19 +1020,32 @@ def fit_vinecop(u1, copsi, vine="R", printing=True):
                     orderk = orderk.reset_index(drop=True)
                     orderk["tree"] = k - 1
 
+                    # Fit copulas for this tree
+                    tree_aics = []
+                    tree_logliks = []
+                    tree_rhos = []
+                    tree_cops = []
+                    tree_coefs = []
+                    
                     for j in range(len(orderk)):
                         u3 = np.vstack(
                             (v1_k[:, j], v2_k[:, j])
                         ).T  # stacking the combination to fit copula to
-                        cop, rho, aic = bestcop(copsi, u3)  # fit the best copula
-                        aics.append(aic)  # add AIC to aics
-                        rhos.append(rho)  # add parameters to rhos
-                        cops.append(cop)  # add copula to cops
+                        cop, distribution, rho, aic, coef, loglik = bestcop(copsi, u3, X, estimator)  # fit the best copula
+                        tree_aics.append(aic)  # add AIC to aics
+                        tree_logliks.append(loglik)  # add log-likelihood to logliks
+                        tree_rhos.append(rho)  # add parameters to rhos
+                        tree_cops.append(cop)  # add copula to cops
+                        tree_coefs.append(coef)  # add coefficients to coefs
+
+                   
 
                     # add information to dataframe of tree k
-                    orderk["rhos"] = rhos
-                    orderk["cop"] = cops
-                    orderk["AIC"] = aics
+                    orderk["rhos"] = tree_rhos
+                    orderk["cop"] = tree_cops
+                    orderk["AIC"] = tree_aics
+                    orderk["loglik"] = tree_logliks
+                    orderk["coefs"] = tree_coefs
                     locals()["v1_" + str(k)] = v1_k
                     locals()["v2_" + str(k)] = v2_k
                     locals()["order" + str(k)] = orderk
@@ -959,19 +1087,33 @@ def fit_vinecop(u1, copsi, vine="R", printing=True):
                     orderk["tree"] = k - 1
                     v1_k = v1_k.copy()
                     v2_k = v2_k.copy()
+                    
+                    # Fit copulas for this tree
+                    tree_aics = []
+                    tree_logliks = []
+                    tree_rhos = []
+                    tree_cops = []
+                    tree_coefs = []
+                    
                     for j in range(len(orderk)):
                         u3 = np.vstack(
                             (v1_k[:, j], v2_k[:, j])
                         ).T  # stacking the combination to fit copula to
-                        cop, rho, aic = bestcop(copsi, u3)  # fit the best copula
-                        aics.append(aic)  # add AIC to aics
-                        rhos.append(rho)  # add parameters to rhos
-                        cops.append(cop)  # add copula to cops
+                        cop, rho, aic, coef, loglik = bestcop(copsi, u3, X, distribution, estimator)  # fit the best copula
+                        tree_aics.append(aic)  # add AIC to aics
+                        tree_logliks.append(loglik)  # add log-likelihood to logliks
+                        tree_rhos.append(rho)  # add parameters to rhos
+                        tree_cops.append(cop)  # add copula to cops
+                        tree_coefs.append(coef)  # add coefficients to coefs
+
+        
 
                     # add information to dataframe of tree k
-                    orderk["rhos"] = rhos
-                    orderk["cop"] = cops
-                    orderk["AIC"] = aics
+                    orderk["rhos"] = tree_rhos
+                    orderk["cop"] = tree_cops
+                    orderk["AIC"] = tree_aics
+                    orderk["loglik"] = tree_logliks
+                    orderk["coefs"] = tree_coefs
                     locals()["v1_" + str(k)] = v1_k
                     locals()["v2_" + str(k)] = v2_k
                     locals()["order" + str(k)] = orderk
@@ -983,19 +1125,30 @@ def fit_vinecop(u1, copsi, vine="R", printing=True):
                     orderk = orderk.reset_index(drop=True)
                     orderk["tree"] = k - 1
 
+                    # Fit copulas for this tree
+                    tree_aics = []
+                    tree_rhos = []
+                    tree_cops = []
+                    tree_coefs = []
+                    
                     for j in range(len(orderk)):
                         u3 = np.vstack(
                             (v1_k[:, j], v2_k[:, j])
                         ).T  # stacking the combination to fit copula to
-                        cop, rho, aic = bestcop(copsi, u3)  # fit the best copula
-                        aics.append(aic)  # add AIC to aics
-                        rhos.append(rho)  # add parameters to rhos
-                        cops.append(cop)  # add copula to cops
+                        cop, rho, aic, coef, loglik = bestcop(copsi, u3, X, distribution, estimator)  # fit the best copula
+                        tree_aics.append(aic)  # add AIC to aics
+                        tree_logliks.append(loglik)  # add log-likelihood to logliks
+                        tree_rhos.append(rho)  # add parameters to rhos
+                        tree_cops.append(cop)  # add copula to cops
+                        tree_coefs.append(coef)  # add coefficients to coefs
 
+              
                     # add information to dataframe of tree k
-                    orderk["rhos"] = rhos
-                    orderk["cop"] = cops
-                    orderk["AIC"] = aics
+                    orderk["rhos"] = tree_rhos
+                    orderk["cop"] = tree_cops
+                    orderk["AIC"] = tree_aics
+                    orderk["loglik"] = tree_logliks
+                    orderk["coefs"] = tree_coefs
                     locals()["v1_" + str(k)] = v1_k
                     locals()["v2_" + str(k)] = v2_k
                     locals()["order" + str(k)] = orderk
@@ -1011,9 +1164,10 @@ def fit_vinecop(u1, copsi, vine="R", printing=True):
     c = np.empty((dimen, dimen))
     a[:] = np.nan
     c[:] = np.nan
+    print(a)
 
     order["used"] = 0  # set used to 0 for nodes that have not been used
-    for i in list(range(dimen - 1))[
+    for i in list(range(dimen-1))[
         ::-1
     ]:  # create the matix for the tree structure starting with the last tree
         k1 = sorted(
@@ -1042,7 +1196,7 @@ def fit_vinecop(u1, copsi, vine="R", printing=True):
     p[:] = np.nan
     p = p.astype(object)
     # fill array p with the parameters and c with the copulas, corresponding to the structure in c
-    for i in list(range(dimen - 1)):
+    for i in list(range(dimen-1)):
         orde = order[order.tree == i]
         for k in list(range(dimen - 1 - i)):
             ak = a[:, k]
@@ -1061,6 +1215,8 @@ def fit_vinecop(u1, copsi, vine="R", printing=True):
                         )
                     orderk = pd.concat([orderk, orderj]).reset_index(drop=True)
 
+    
+
     # print the copula structure if print == True
     if printing == True:
         for i in list(range(0, dimen - 1)):
@@ -1076,8 +1232,9 @@ def fit_vinecop(u1, copsi, vine="R", printing=True):
                     " ---> ",
                     copulas[int(orde.cop[j])],
                     ": parameters = ",
-                    orde.rhos[j],
+                    orde.coefs[j],
                 )
+        
 
     return a, p, c
 
@@ -1170,8 +1327,8 @@ def density_vinecop(u, M, P, C):
 
     
 
-# %% fitting vine copula with sspecific structure
-def fit_vinecopstructure(u1, copsi, a):
+# %% fitting vine copula with specific structure
+def fit_vinecopstructure(u1, copsi, a, X, online =0, E=None, printing = True):
     """
     Fit a regular vine copula to data based on a known vine structure matrix.
 
@@ -1188,12 +1345,18 @@ def fit_vinecopstructure(u1, copsi, a):
      *c* : The types of the bivariate copulae provided as a triangular matrix, composed of integers referring to the copulae with the best fit. eg. a 1 refers to the gaussian copula (see `Table 1 <https://vinecopulas.readthedocs.io/en/latest/vinecopulas.html#Fitting-a-Vine-Copula>`__).
 
     """
-
+    
     dimen = a.shape[0]  # number of variables (number of columns)
     order = pd.DataFrame(
-        columns=["node", "l", "r", "tree"]
+        columns=["node", "l", "r", "tree", "estimator"]
     )  # dataframe for vinecopula information
     s = 0
+
+    if online == 1:
+        e = E 
+    else:
+        e = np.ones((dimen, dimen))
+
     for i in list(range(dimen - 1)):
         for k in list(range(dimen - 1 - i)):
             ak = a[:, k]  # Edge
@@ -1204,6 +1367,7 @@ def fit_vinecopstructure(u1, copsi, a):
                     "l": akn[0],
                     "r": akn[1],
                     "tree": i,
+                    "estimator": e[i,k],
                 }
             else:
                 single_row_values = {
@@ -1211,34 +1375,51 @@ def fit_vinecopstructure(u1, copsi, a):
                     "l": list(akn),
                     "r": list((ak.astype(int)[:i])[::-1]),
                     "tree": i,
+                    "estimator": e[i,k],
+
                 }
 
             order.loc[s] = single_row_values
             s = s + 1
 
     for t in list(range(dimen - 1)):  # loop through trees
-        orderk = order[order.tree == t].reset_index(drop=True)  # select tre
+        orderk = order[order.tree == t].reset_index(drop=True)  # select tree
         if t == 0:  # first tree
             orderk["v1"] = orderk.l
             orderk["v2"] = orderk.r
             rhos = []
+            coefs = []
             v1_1 = []
             v2_1 = []
             cops = []
             tauabs = []
+            logliks = []
+            aics = []
+            dists = []
+            if online != 1:
+                estims = []
 
             for j in range(len(orderk)):
                 v1i = int(orderk.v1[j])  # first node
                 v2i = int(orderk.v2[j])  # second node
                 tauabs.append(
                 abs(st.kendalltau(u1[:, v1i], u1[:, v2i])[0])
-            ) 
+                ) 
                 u3 = np.vstack(
                     (u1[:, v1i], u1[:, v2i])
                 ).T  # stacking the combination to fit copula to
-                cop, rho, aic = bestcop(copsi, u3)  # fit the best copula
+                if online == 1:
+                    estimator = orderk.estimator[j]
+                    cop, dist, rho, aic, coef, loglik = bestcop_online(estimator, u3, X)  
+                else:
+                    cop, dist, rho, aic, coef, loglik, estim = bestcop(copsi, u3, X)  # fit the best copula
                 rhos.append(rho)  # add parameters to rhos
+                coefs.append(coef)  # add coefficients to coefs
                 cops.append(cop)  # add copula to cops
+                dists.append(dist)  # add distance to dists
+                logliks.append(loglik)  # add log-likelihood to logliks
+                if online != 1:
+                    estims.append(estim)
                 v1_1.append(u1[:, v1i])  # add array of first node
                 v2_1.append(u1[:, v2i])  # add array of second node
             v1_1 = np.array(v1_1).T  # v1
@@ -1246,25 +1427,26 @@ def fit_vinecopstructure(u1, copsi, a):
 
             # add information to dataframe of the first tree
             orderk["rhos"] = rhos
+            orderk["coefs"] = coefs
             orderk["cop"] = cops
+            orderk["dist"] = dists
             orderk["tauabs"] = tauabs
-            orderk = orderk.sort_values(by="tauabs", ascending=False)
-            v1_1 = v1_1[:, orderk.index]  # sort array of first node
-            v2_1 =  v2_1[:, orderk.index] # sort array of second node
-            orderk = orderk.reset_index(
-        drop=True
-    ) 
-            
-            
-            
-            
-            
+            orderk["loglik"] = logliks
+            if online != 1:
+                orderk["estimators"] = estims
+            #orderk = orderk.sort_values(by="tauabs", ascending=False)
+         
+                v1_1 = v1_1[:, orderk.index]   # sort array of first node
+                v2_1 =  v2_1[:, orderk.index] # sort array of second node
+            else: 
+                v1_1 = v1_1[:, orderk.index]  # sort array of first node
+                v2_1 =  v2_1[:, orderk.index]  # sort array of second node
+            orderk = orderk.reset_index(drop=True) 
 
         else:
-
             v1k = []
             v2k = []
-            tauabs = []
+            tauabs = []                
             for j in range(len(orderk)):
                 orderk2 = locals()["order" + str(t)] # Define possible nodes of edge
                 l = orderk.l[j] + orderk.r[j]
@@ -1278,13 +1460,22 @@ def fit_vinecopstructure(u1, copsi, a):
             orderk["v1"] = v1k
             orderk["v2"] = v2k
             orderk2 = locals()["order" + str(t)].reset_index(drop=True)
-            v1s = locals()["v1_" + str(t)].copy()
-            v2s = locals()["v2_" + str(t)].copy()
+            if online == 1: 
+                v1s = locals()["v1_" + str(t)].copy().reshape(1,-1)
+                v2s = locals()["v2_" + str(t)].copy().reshape(1,-1) 
+            else:
+                v1s = locals()["v1_" + str(t)].copy()
+                v2s = locals()["v2_" + str(t)].copy()
             v1_k = []
             v2_k = []
             rhos = []
+            coefs = []
             cops = []
-
+            logliks = []
+            aics = []
+            dists = []
+            if online != 1:
+                estims = []
             for k in range(len(orderk)):  # fitting copulas
                 r = orderk.r[k]
                 nodei = orderk.v1[k]  # nodei
@@ -1292,8 +1483,10 @@ def fit_vinecopstructure(u1, copsi, a):
                 i = orderk2[orderk2["node"].apply(lambda x: x == nodei)].index[0]
                 j = orderk2[orderk2["node"].apply(lambda x: x == nodej)].index[0]
                 copj = int(orderk2.cop[j])  # copula of nodej
+                distj = orderk2.dist[j]
                 parj = orderk2.rhos[j]  # parameters of nodej
                 copi = int(orderk2.cop[i])  # copula of nodei
+                disti = orderk2.dist[i]
                 pari = orderk2.rhos[i]  # parameters of nodei
                 ri = orderk2.r[i]
                 rj = orderk2.r[j]
@@ -1348,34 +1541,95 @@ def fit_vinecopstructure(u1, copsi, a):
                         unj = 2
                         vj1 = v1j
                 # calculate the conditional CDF
-                v1igs = hfunc(copi, ui1, ui2, pari, un=uni)
-                v2jgs = hfunc(copj, uj1, uj2, parj, un=unj)
+                # pari = np.loadtxt(r'C:\Users\OEK-admin\OneDrive\Arbeit_Uni\Uni_Due\ProjectII\par.csv', delimiter=',', skiprows=1).reshape(-1, 1)
+                if online == 1:
+                    pari = pari[0].reshape(1, -1)   
+                    parj = parj[0].reshape(1, -1)   
+                v1igs = hfunc(copi, ui1, ui2, pari, un=uni,distribution=disti)
+                v2jgs = hfunc(copj, uj1, uj2, parj, un=unj,distribution=distj)
+
                 u3 = np.vstack(
-                    (v1igs, v2jgs)
+                    (v2jgs, v1igs)
                 ).T  # stacking the combination to fit copula to
-                cop, rho, aic = bestcop(copsi, u3)  # fit the best copula
+
+                if online == 1:
+                    estimator = orderk.estimator[k]
+                    cop, dist, rho, aic, coef, loglik = bestcop_online(estimator, u3, X)  
+                else:
+                    cop, dist, rho, aic, coef, loglik, estim = bestcop(copsi, u3, X)  # fit the best copula
 
                 rhos.append(rho)  # add parameters to rhos
+                coefs.append(coef)
                 cops.append(cop)  # add copula to cops
+                dists.append(dist)  # add distribution to dists
+                logliks.append(loglik)
+                if online != 1:  # add log-likelihood to logliks
+                    estims.append(estim)
                 v1_k.append(v1igs)
                 v2_k.append(v2jgs)
             orderk["rhos"] = rhos
             orderk["cop"] = cops
-
+            orderk["dist"] = dists
+            orderk["loglik"] = logliks
+            orderk["coefs"] = coefs
+            if online != 1:
+                orderk["estimators"] = estims
             locals()["v1_" + str(t + 1)] = np.array(v1_k).T
             locals()["v2_" + str(t + 1)] = np.array(v2_k).T
 
         locals()["order" + str(t + 1)] = orderk
-    order = pd.DataFrame(columns=orderk.columns)
-    for i in range(1, dimen):
-        order = pd.concat([order, locals()["order" + str(i)]]).reset_index(drop=True)
+    
 
-    p = np.empty((dimen, dimen))  # parameter array
+    order = pd.DataFrame(columns=orderk.columns)  # dataframe to add all trees to
+    for i in range(1, dimen):
+        order = pd.concat([order, locals()["order" + str(i)]]).reset_index(
+            drop=True
+        )  # adding trees in dataframe
+    
+
+
+    # create array for the tree structure and copula matrices
+    a = np.empty((dimen, dimen))
+    c = np.empty((dimen, dimen))
+    a[:] = np.nan
+    c[:] = np.nan
+
+    order["used"] = 0  # set used to 0 for nodes that have not been used
+    for i in list(range(dimen-1))[
+        ::-1
+    ]:  # create the matix for the tree structure starting with the last tree
+        k1 = sorted(
+            np.array(
+                order[(order.tree == i) & (order["used"] == 0)].node.iloc[0][:2]
+            ).astype(int)
+        )[::-1]
+        order.loc[(order["tree"] == i) & (order["used"] == 0), "used"] = 1
+        t1 = i - 1
+        ii = dimen - 2 - i
+        a[i : dimen - ii, ii] = k1
+        s = k1[-1]
+        for j in list(range(0, i))[::-1]:  # continueing from tree i to the first tree
+            orde = order[(order.tree == j) & (order["used"] == 0)]
+            for k in range(len(orde)):
+                arr = np.array(orde.node.iloc[k][:2]).astype(int)
+                if np.isin(s, arr) == True:
+                    inde = orde.iloc[k].name
+                    a[j, ii] = arr[arr != s][0]
+                    order["used"][inde] = 1
+
+    a[0, dimen - 1] = a[0, dimen - 2]  # set first sample in sampling order
+    orderk = pd.DataFrame(columns=order.columns)
+    # create array for the copula parameter matrix
+    p = np.empty((dimen, dimen))
     p[:] = np.nan
     p = p.astype(object)
-    c = np.empty((dimen, dimen))  # copula array
-    c[:] = np.nan
-    for i in list(range(dimen - 1)):  # fil the copula and parameter array
+
+    e = np.empty((dimen, dimen))
+    e[:] = np.nan
+    e = e.astype(object)
+
+    # fill array p with the parameters and c with the copulas, corresponding to the structure in c
+    for i in list(range(dimen-1)):
         orde = order[order.tree == i]
         for k in list(range(dimen - 1 - i)):
             ak = a[:, k]
@@ -1386,7 +1640,42 @@ def fit_vinecopstructure(u1, copsi, a):
                     orderj = order.loc[[orde.index[j]]]
                     p[i, k] = orderj.rhos.iloc[0]
                     c[i, k] = orderj.cop.iloc[0]
-    return p, c
+                    if online != 1:
+                        e[i,k] = orderj.estimators.iloc[0]
+                    if i == 0:
+                        orderj.node.iloc[0] = list(akn)
+                    else:
+                        orderj.node.iloc[0] = (
+                            list(akn) + ["|"] + list((ak.astype(int)[:i])[::-1])
+                        )
+                    orderk = pd.concat([orderk, orderj]).reset_index(drop=True)
+
+    
+
+    # print the copula structure if print == True
+    if printing == True:
+        for i in list(range(0, dimen - 1)):
+            orde = orderk[orderk.tree == i].reset_index(drop=True)
+            print("** Tree: ", i + 1)
+            for j in range(len(orde)):
+                if i != 0:
+                    nodej = ",".join(map(str, orde.node[j])).replace(",|,", "|")
+                else:
+                    nodej = ",".join(map(str, orde.node[j]))
+                print(
+                    nodej,
+                    " ---> ",
+                    copulas[int(orde.cop[j])],
+                    ": parameters = ",
+                    orde.coefs[j],
+                    ", l = ",
+                    orde.l[j] if 'l' in orde.columns else "N/A",
+                    ", r = ",
+                    orde.r[j] if 'r' in orde.columns else "N/A",
+                )
+        
+
+    return e, p, c, a
 
 
 # %% Sampling vine copula
@@ -1470,7 +1759,6 @@ def sample_vinecop(a, p, c, s):
             Vindir[:, int(i - 1), k] = hfunc(
                 int(C[i, k]), Z1[:, i, k], Z2[:, i, k], P[i, k], un=1
             )
-
     # Put X in the original order of the data
     replacedf = pd.DataFrame(list(replace.items()), columns=["Original", "Replacement"])
     replacedf = replacedf.sort_values(by="Original")
@@ -1480,7 +1768,107 @@ def sample_vinecop(a, p, c, s):
             X2 = X[:, int(i)].reshape(len(X), 1)
         else:
             X2 = np.hstack((X2, X[:, int(i)].reshape(len(X), 1)))
+
     return X2
+
+def simulate_vinecop(a, x, beta, c, s):
+    """
+    Generate random samples from an R-vine.
+
+    Arguments:
+        *a* : The vine tree structure provided as a triangular matrix, composed of integers. The integer refers to different variables depending on which column the variable was in u1, where the first column is 0 and the second column is 1, etc.
+
+        *p* : Parameters of the bivariate copulae provided as a triangular matrix.
+
+        *c* : The types of the bivariate copulae provided as a triangular matrix, composed of integers referring to the copulae with the best fit. eg. a 1 refers to the gaussian copula  (see `Table 1 <https://vinecopulas.readthedocs.io/en/latest/vinecopulas.html#Fitting-a-Vine-Copula>`__).
+
+        *s* : number of samples to generate, provided as a positive scalar integer.
+
+
+
+    Returns:
+     *X2* :  the randomly sampled data data, provided as a numpy array where each column contains samples of a seperate variable (eg. u1,u2,...,un).
+
+    """
+    # Reference: Dißmann et al. 2013
+    Ms = np.flipud(a)  # flip structure matrix
+    C = np.flipud(c)  # flip copula matrix
+    replace = {}  # dictionary for relabeling martix
+    for i in range(int(max(np.unique(Ms)) + 1)):
+        val = max(np.unique(Ms)) - i
+        # Ms[k,k]
+        replace.update({Ms[i, i]: val})  # relabel
+
+    Ms = np.nan_to_num(Ms, nan=int(max(np.unique(Ms)) + 1))
+    replace_func = np.vectorize(
+        lambda x: replace.get(x, x)
+    )  # Create a vectorized function for replacement
+    M = replace_func(Ms)  # relabel
+    M[M == np.max(Ms)] = np.nan
+    Mm = M.copy()
+    # max matrix
+    for i in range(M.shape[0]):
+        for k in range(M.shape[0]):
+            if k == i:
+                continue
+            if i == 0:
+                continue
+            Mm[i, k] = max(Mm[i:, k])
+
+    # Vdirect
+    Vdir = np.empty((s, M.shape[0], M.shape[0]))
+    Vdir[:] = np.nan
+    # Vindirect
+    Vindir = np.empty((s, M.shape[0], M.shape[0]))
+    Vindir[:] = np.nan
+    # Z2
+    Z2 = np.empty((s, M.shape[0], M.shape[0]))
+    Z2[:] = np.nan
+    # Z1
+    Z1 = np.empty((s, M.shape[0], M.shape[0]))
+    Z2[:] = np.nan
+    U = np.random.uniform(0, 1, (s, M.shape[0]))  # random uniform
+    Vdir[:, -1, :] = U.copy()
+    X = np.flip(U.copy(), 1)
+    n = M.shape[0] - 1
+    # sampling algorithm
+    for k in range(n)[::-1]:
+        for i in range(k + 1, n + 1):
+            if M[i, k] == Mm[i, k]:
+                Z2[:, i, k] = Vdir[:, i, int(n - Mm[i, k])]
+            else:
+                Z2[:, i, k] = Vindir[:, i, int(n - Mm[i, k])]
+
+            P = copula_distributions[1].element_link_inverse(x@beta, 0).reshape(-1, 1)
+            P = copula_distributions[C[i,k]].param_link_inverse(P, 0).reshape(-1, 1)
+
+            Vdir[:, n, k] = hfuncinverse(
+                int(C[i, k]), Z2[:, i, k], Vdir[:, n, k], P, un=2
+            )
+        X[:, int(n - k)] = Vdir[:, n, k]
+        for i in range(k + 1, n + 1)[::-1]:
+            Z1[:, i, k] = Vdir[:, i, k]
+            P = copula_distributions[1].element_link_inverse(x@beta, 0).reshape(-1, 1)
+            P = copula_distributions[C[i,k]].param_link_inverse( P, 0).reshape(-1, 1)
+
+            Vdir[:, int(i - 1), k] = hfunc(
+                int(C[i, k]), Z1[:, i, k], Z2[:, i, k], P, un=2
+            )
+            Vindir[:, int(i - 1), k] = hfunc(
+                int(C[i, k]), Z1[:, i, k], Z2[:, i, k], P, un=1
+            )
+    # Put X in the original order of the data
+    replacedf = pd.DataFrame(list(replace.items()), columns=["Original", "Replacement"])
+    replacedf = replacedf.sort_values(by="Original")
+    X2 = np.array([])
+    for i in replacedf.Replacement:
+        if len(X2) == 0:
+            X2 = X[:, int(i)].reshape(len(X), 1)
+        else:
+            X2 = np.hstack((X2, X[:, int(i)].reshape(len(X), 1)))
+
+    return X2
+
 
 
 # %% Sampling conditonal vine copula
@@ -1761,6 +2149,24 @@ def samplingmatrix(a, c, p, sorder):
                     pi[j, ii] = order["par"][inde]
                     order["used"][inde] = 1
     ai[0, dimen - 1] = ai[0, dimen - 2]
+
+        # print the copula structure if print == True
+    if printing == True:
+        for i in list(range(0, dimen - 1)):
+            orde = orderk[orderk.tree == i].reset_index(drop=True)
+            print("** Tree: ", i + 1)
+            for j in range(len(orde)):
+                if i != 0:
+                    nodej = ",".join(map(str, orde.node[j])).replace(",|,", "|")
+                else:
+                    nodej = ",".join(map(str, orde.node[j]))
+                print(
+                    nodej,
+                    " ---> ",
+                    copulas[int(orde.cop[j])],
+                    ": parameters = ",
+                    orde.coefs[j],
+                )
     return ai, pi, ci
 
 
@@ -2289,19 +2695,22 @@ def fit_conditionalvine(u1, vint, copsi, vine="R", condition=1, printing=True):
     order1 = order2  # make order1 == the first tree
     del order2
     rhos = []  # list for the rhos
+    coefs = []
     node = []  # list for the nodes
     cops = []  # list for the copulas
     v1_1 = []  # list for the 1st nodes
     v2_1 = []  # list for the 2nd nodes
     aics = []  # list for the AIC's
+    logliks = []
     for i in range(len(order1)):
         v1i = int(order1.v1[i])  # first node
         v2i = int(order1.v2[i])  # second node
         u3 = np.vstack(
             (u1[:, v1i], u1[:, v2i])
         ).T  # stacking the combination to fit copula to
-        cop, rho, aic = bestcop(copsi, u3)  # fit the best copula
+        cop, rho, aic, loglik = bestcop(copsi, u3, X, distribution, estimator)  # fit the best copula
         aics.append(aic)  # add AIC to aics
+        logliks.append(loglik)  # add log-likelihood to logliks
         rhos.append(rho)  # add parameters to rhos
         cops.append(cop)  # add copula to cops
         node.append([v1i, v2i])  # create final node
@@ -2316,6 +2725,7 @@ def fit_conditionalvine(u1, vint, copsi, vine="R", condition=1, printing=True):
     order1["tree"] = 0
     order1["cop"] = cops
     order1["AIC"] = aics
+    order1["loglik"] = logliks
 
     # set up variables for the second tree
     v1 = []
@@ -2327,6 +2737,7 @@ def fit_conditionalvine(u1, vint, copsi, vine="R", condition=1, printing=True):
     v1_k = []
     v2_k = []
     aics = []
+    logliks = []
     for i in range(
         len(order1) - 1
     ):  # loop through the first tree to identify all possible combination of nodes
@@ -2793,8 +3204,9 @@ def fit_conditionalvine(u1, vint, copsi, vine="R", condition=1, printing=True):
         u3 = np.vstack(
             (v1_2[:, i], v2_2[:, i])
         ).T  # stacking the combination to fit copula to
-        cop, rho, aic = bestcop(copsi, u3)  # fit the best copula
+        cop, rho, aic, loglik = bestcop(copsi, u3, X, distribution, estimator)  # fit the best copula
         aics.append(aic)  # add AIC to aics
+        logliks.append(loglik)
         rhos.append(rho)  # add parameters to rhos
         cops.append(cop)  # add copula to cops
 
@@ -2802,6 +3214,7 @@ def fit_conditionalvine(u1, vint, copsi, vine="R", condition=1, printing=True):
     order2["rhos"] = rhos
     order2["cop"] = cops
     order2["AIC"] = aics
+    order2["loglik"] = logliks
 
     # loop through remaining trees if there are more than 3 variables
     if dimen > 3:
@@ -2826,6 +3239,7 @@ def fit_conditionalvine(u1, vint, copsi, vine="R", condition=1, printing=True):
             node = []
             lk = []
             aics = []
+            logliks = []
             rk = []
             for i in range(len(order) - 1):
                 v1i = order.v1[i].copy()  # parent node 1 from nodei in tree
@@ -3365,14 +3779,16 @@ def fit_conditionalvine(u1, vint, copsi, vine="R", condition=1, printing=True):
 
             for j in range(len(orderk)):
                 u3 = np.vstack((v1_k[:, j], v2_k[:, j])).T
-                cop, rho, aic = bestcop(copsi, u3)
+                cop, rho, aic, loglik = bestcop(copsi, u3, X, distribution, estimator)
                 aics.append(aic)
                 rhos.append(rho)
                 cops.append(cop)
+                logliks.append(loglik)
 
             orderk["rhos"] = rhos
             orderk["cop"] = cops
             orderk["AIC"] = aics
+            orderk["loglik"] = logliks
             locals()["v1_" + str(k)] = v1_k
             locals()["v2_" + str(k)] = v2_k
             locals()["order" + str(k)] = orderk

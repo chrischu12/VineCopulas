@@ -17,15 +17,131 @@ from scipy.special import gammaln
 from scipy.linalg import cholesky
 from itertools import product
 import sys
+import os
+import importlib
 from scipy import optimize
+
+#  Add your local package to the path
+ondil_path = r"C:\Users\OEK-admin\OneDrive\Arbeit_Uni\Uni_Due\ProjectII\ondil"
+if ondil_path not in sys.path:
+    sys.path.insert(0, ondil_path)
+
+print("Python Path:", sys.path)
+print("Current Working Directory:", os.getcwd())
+
+#  HOT RELOAD: Clear old ondil modules from cache
+for name in list(sys.modules):
+    if "src.ondil" in name:  # adjust if your package is imported as ondil.* instead
+        del sys.modules[name]
+importlib.invalidate_caches()
+
+#  Import ondil classes
+from src.ondil.estimators import MultivariateOnlineDistributionalRegressionPath
+from src.ondil.links import FisherZLink, KendallsTauToParameter, KendallsTauToParameterClayton, Log, GumbelLink, KendallsTauToParameterGumbel, LogShiftTwo
+from src.ondil.distributions import BivariateCopulaNormal, BivariateCopulaClayton, BivariateCopulaGumbel, BivariateCopulaStudentT, Normal
 
 #%% Copulas
 
-copulas = { 1: 'Gaussian', 2 : 'Gumbel0', 3 :'Gumbel90' , 4 : 'Gumbel180', 5 : 'Gumbel270', 6 : 'Clayton0', 7 : 'Clayton90', 8 : 'Clayton180', 9: 'Clayton270', 10: 'Frank', 11: 'Joe0', 12: 'Joe90', 13: 'Joe180', 14: 'Joe270', 15: 'Student'} 
+copulas = {
+    1: "Gaussian",
+    2: "StudentT",
+    31: "Clayton I",
+    32: "Clayton II",
+    33: "Clayton III",
+    34: "Clayton IV",
+    41: "Gumbel I",
+    42: "Gumbel II",
+    43: "Gumbel III",
+    44: "Gumbel IV",
+}
+
+copula_distributions_bivariate = {
+    1: BivariateCopulaNormal(
+    link=FisherZLink(),
+    param_link=KendallsTauToParameter()
+), 
+    2: BivariateCopulaStudentT(
+    link_1 = FisherZLink(),
+    link_2 = LogShiftTwo(),
+    param_link_1 = KendallsTauToParameter(),
+    param_link_2 = KendallsTauToParameter(),
+),  
+    31: BivariateCopulaClayton(
+    link= Log(),
+    param_link=KendallsTauToParameterClayton(),
+    family_code = 31,
+), 
+    32: BivariateCopulaClayton(
+    link= Log(),
+    param_link=KendallsTauToParameterClayton(),
+    family_code = 32,
+), 
+    33: BivariateCopulaClayton(
+    link= Log(),
+    param_link=KendallsTauToParameterClayton(),
+    family_code = 33,
+), 
+    34: BivariateCopulaClayton(
+    link= Log(),
+    param_link=KendallsTauToParameterClayton(),
+    family_code = 34,
+), 
+
+    41: BivariateCopulaGumbel(
+    link=GumbelLink(),
+    param_link=KendallsTauToParameterGumbel(),
+    family_code=41,
+),
+
+    42: BivariateCopulaGumbel(
+    link=GumbelLink(),
+    param_link=KendallsTauToParameterGumbel(),
+    family_code=42,
+),
+    43: BivariateCopulaGumbel(
+    link=GumbelLink(),
+    param_link=KendallsTauToParameterGumbel(),
+    family_code=43,
+),    
+
+    44: BivariateCopulaGumbel(
+    link=GumbelLink(),
+    param_link=KendallsTauToParameterGumbel(),
+    family_code=44,
+),
+}
+
+# Dynamic selection of copulas by their numeric codes
+
+def select_copulas(codes):
+    _all_copula_distributions = copula_distributions_bivariate.copy()
+    return {c: _all_copula_distributions[c] for c in codes if c in _all_copula_distributions}
+
+# Reverse mapping: distribution instance type to copula number
+def get_copula_number(distribution_instance):
+    """
+    Returns the copula number for a given distribution instance.
+    
+    Arguments:
+        distribution_instance: An instance of a copula distribution class
+        
+    Returns:
+        The copula number (int) or None if not found
+    """
+    type_name = type(distribution_instance).__name__
+    
+    for cop_num, dist in copula_distributions_bivariate.items():
+        if type(dist).__name__ == type_name:
+            return cop_num
+    
+    return None
+
+
+
 
 #%% fitting
 
-def fit(cop, u):
+def fit_vine_copulas(cop, u):
     """
     Fits a specific copula to data.
     
@@ -41,6 +157,8 @@ def fit(cop, u):
     """
     u[u==1] = 0.999999
     u[u==0] = 0.000001
+
+
     #Gaussian
     if cop == 1:
         par = np.corrcoef(st.norm.ppf(u),rowvar=False)[0][1]
@@ -105,7 +223,115 @@ def fit(cop, u):
 #%% best fit
 
 
-def bestcop(cops, u):
+def bestcop(cops, u, X, early_stopped=False):
+    """
+    Fits the best copula to data based on a selected list of copulas to fit to using the AIC.
+    
+    Arguments:
+        *cops* : A list of integers referring to the copulae of interest for which the fit has to be evaluated. eg. a list of [1, 10] refers to the Gaussian and Frank copula (see `Table 1 <https://vinecopulas.readthedocs.io/en/latest/vinecopulas.html#Fitting-a-Vine-Copula>`__).
+        
+        *u* : A 2-d numpy array containing the samples for which the copulae will be fit and evaluated. Column 1 contains variable u1, and column 2 contains variable u2.
+     
+     
+    Returns:  
+     *cop* : An integer referring to the copula with the best fit. eg. a 1 refers to the gaussian copula (see `Table 1 <https://vinecopulas.readthedocs.io/en/latest/vinecopulas.html#Fitting-a-Vine-Copula>`__).
+         
+     *par* : The correlation parameters of the copula with the best fit, provided as a scalar value for copulas with one parameter and as a list for copulas with more parameters (see `Table 1 <https://vinecopulas.readthedocs.io/en/latest/vinecopulas.html#Fitting-a-Vine-Copula>`__).
+         
+     *aic* : The Akaike information criterion of the copula with the best fit.
+      
+    """
+    # Example usage:
+    copula_distributions_bivariate = select_copulas(cops)
+
+    if early_stopped==True:
+        AIC = []
+        PAR = []
+        COEF = []
+        LOGLIK = []
+        n_rows = u.shape[0]
+        n_cols = X.shape[1]
+        #for cop in cops:
+            #par = fit(cop, u)
+            #if cop == 15:
+                #AIC.append(4 + (2 * neg_likelihood(par,cop,u)))
+                #PAR.append(par)
+            #else:
+                #AIC.append(2 + (2 * neg_likelihood(par,cop,u)))
+                #PAR.append(par)
+
+        LOGLIK.append(0)
+        AIC.append(0)
+        PAR.append(np.zeros(n_rows))
+        COEF.append(np.zeros(n_cols))
+
+        i = np.where(AIC == np.nanmin(AIC))[0][0]  
+        cop = 0
+        par = PAR
+        aic = AIC
+        coef = COEF
+        loglik = LOGLIK
+
+    else:   
+        AIC = []
+        PAR = []
+        COEF = []
+        LOGLIK = []
+        ESTIM = []
+        for cop in cops:
+            equation = {
+                0: {
+                    h: np.arange(X.shape[1])
+                    for h in range(u.shape[1])
+                }
+            }
+            copula_distributions_bivariate[cop]
+        
+            estimator = MultivariateOnlineDistributionalRegressionPath(
+                distribution=copula_distributions_bivariate[cop],
+                equation=equation,
+                method="lasso",
+                early_stopping=False,
+                early_stopping_criteria="bic",
+                iteration_along_diagonal=False,
+                verbose=3,
+                max_iterations_inner=20,
+                max_iterations_outer=1,
+                scale_inputs=False,
+            )
+            
+            estimator.fit(X, u)
+
+            if cop == 2:
+                par = estimator.predict_distribution_parameters(X) 
+            else:
+                par = estimator.predict(X)
+          
+        
+            #if cop == 15:
+                #AIC.append(4 + (2 * neg_likelihood(par,cop,u)))
+                #PAR.append(par)
+            #else:
+            AIC.append(2 + (2 * -estimator._current_likelihood))
+            PAR.append(par)
+            LOGLIK.append(estimator._current_likelihood)
+            COEF.append(estimator.coef_)
+            ESTIM.append(estimator)
+
+        i = np.where(AIC == np.nanmin(AIC))[0][0]  
+        cop = cops[i]
+        distribution = copula_distributions_bivariate[cop]
+        par = PAR[i]
+        aic = AIC[i]
+        coef = COEF[i]
+        loglik = LOGLIK[i]
+        estim = ESTIM[i]
+
+    return cop, distribution, par, aic, coef, loglik, estim
+
+
+
+def bestcop_online(estimator, u, X):
     """
     Fits the best copula to data based on a selected list of copulas to fit to using the AIC.
     
@@ -126,21 +352,37 @@ def bestcop(cops, u):
     
     AIC = []
     PAR = []
-    for cop in cops:
-        par = fit(cop, u)
-        if cop == 15:
-            AIC.append(4 + (2 * neg_likelihood(par,cop,u)))
-            PAR.append(par)
-        else:
-            AIC.append(2 + (2 * neg_likelihood(par,cop,u)))
-            PAR.append(par)
-   
-    i = np.where(AIC == np.nanmin(AIC))[0][0]  
-    cop = cops[i]
-    par = PAR[i]
-    aic = AIC[i]
-    return cop, par, aic
-        
+    COEF = []
+    LOGLIK = []
+    ESTIM = []
+    
+    cop = get_copula_number(estimator.distribution)
+
+    estimator.update(X, u)
+
+    if cop == 2:
+        par = estimator.predict_distribution_parameters(X) 
+    else:
+        par = estimator.predict(X)
+
+    
+    AIC.append(2 + (2 * -estimator._current_likelihood))
+    PAR.append(par)
+    LOGLIK.append(estimator._current_likelihood)
+    COEF.append(estimator.coef_)
+
+    cop = get_copula_number(estimator.distribution)
+    distribution = estimator.distribution
+    par = PAR
+    aic = AIC
+    coef = COEF
+    loglik = LOGLIK
+
+    return cop, distribution, par, aic, coef, loglik
+
+
+
+
 
 #%%Copula random
 
@@ -670,7 +912,7 @@ def PDF(cop, u, par):
         
 #%% h function
 
-def hfunc(cop, u1, u2, par, un = 1):
+def hfunc(cop, u1, u2, par, un = 1, distribution = None):
     """
     Computes the h-function (conditional CDF) of a copula with respect to variable u1 or u2.
     
@@ -705,161 +947,23 @@ def hfunc(cop, u1, u2, par, un = 1):
         if u1 > 0.9999:
             u1 = 0.9999
     
-    # Gaussian
-    if cop == 1:
-        rho = par
-        if un == 1:
-            x2 = st.norm.ppf(u1)
-            x1 = st.norm.ppf(u2)
-            inner = (x1 - (rho * x2)) / (np.sqrt(1 - rho**2))
-            y = st.norm.cdf(inner)
-        if un == 2:
-            x1 = st.norm.ppf(u1)
-            x2 = st.norm.ppf(u2)
-            inner = (x1 - (rho * x2)) / (np.sqrt(1 - rho**2))
-            y = st.norm.cdf(inner)
-            
-    if cop > 1:
-        alpha = par     
+
+    distribution = copula_distributions_bivariate[cop]
+    rho = par
+
+    if un == 2:
+        y = distribution.hfunc(u1,u2,rho, un, family_code = cop)
         
-    # Gumbel 0 degrees
-    if cop == 2:
-        if un == 2:
-            t1 = (-np.log(u1))**alpha
-            t2 = (-np.log(u2))**alpha
-            y = -(np.exp(-(t1+t2)**(1/alpha)) * ((t1+t2)**((1/alpha) - 1)) * t2)/ (u2*np.log(u2))
-        elif un == 1:
-            t2 = (-np.log(u1))**alpha
-            t1 = (-np.log(u2))**alpha
-            y = -(np.exp(-(t1+t2)**(1/alpha)) * ((t1+t2)**((1/alpha) - 1)) * t2)/ (u1*np.log(u1))
-    # Gumbel 90 degrees
-    if cop == 3:
-        t1 = (-np.log(1- u1))**alpha
-        t2 = (-np.log(u2))**alpha
-        if un == 1:
-            y = -t1 * ((t2 + t1)**(1/alpha)) * np.exp(-((t2 + t1)**(1/alpha))) / ((1 - u1) * (t2 + t1) * np.log(1 - u1))
-        elif un == 2:
-            y = 1 + t2 * ((t2 + t1)**(1/alpha)) * np.exp(-((t2 + t1)**(1/alpha))) / (u2 * (t2 + t1) * np.log(u2))
-    # Gumbel 180 degrees        
-    if cop == 4:
-        t1 = (-np.log(1- u1))**alpha
-        t2 = (-np.log(1 - u2))**alpha
-        if un == 1:
-            y = t1 * ((t1 + t2)**(1/alpha)) * np.exp(-((t1 + t2)**(1/alpha))) / ((1 - u1) * (t1 + t2) * np.log(1 - u1)) + 1
-        elif un == 2:
-            y = t2 * ((t1 + t2)**(1/alpha)) * np.exp(-((t1 + t2)**(1/alpha))) / ((1 - u2) * (t1 + t2) * np.log(1 - u2)) + 1
-    #Gumbel 270 degrees
-    if cop == 5:
-        t1 = (-np.log(u1))**alpha
-        t2 = (-np.log(1-u2))**alpha
-        if un == 1:
-            y = 1 + t1 * ((t1 + t2)**(1/alpha)) * np.exp(-((t1 + t2)**(1/alpha))) / (u1 * (t1 + t2) * np.log(u1))
-        elif un == 2:
-            y = -t2 * ((t1 + t2)**(1/alpha)) * np.exp(-((t1 + t2)**(1/alpha))) / ((1 - u2) * (t1 + t2) * np.log(1 - u2))
-            
-    # Clayton 0 degrees 
-    if cop == 6:     
-        if un == 1:
-            y = 1/(u1*u1**alpha*(-1 + u2**(-alpha) + u1**(-alpha))*(-1 + u2**(-alpha) + u1**(-alpha))**(1/alpha))
-        if  un == 2:
-            y = 1/(u2*u2**alpha*(-1 + u2**(-alpha) + u1**(-alpha))*(-1 + u2**(-alpha) + u1**(-alpha))**(1/alpha))
-        try:
-            if np.isnan(y) == True:
-                y =  0.00001
-            if y < 0.00001:
-                y =  0.00001
-        except:
-            y[np.isnan(y)] = 0.00001
-            y[y<0.00001] = 0.00001
-    #Clayton 90 degrees
-    if cop == 7:
-        if un == 1:
-            y = 1/((1 - u1)*(1 - u1)**alpha*(-1 + (1 - u1)**(-alpha) + u2**(-alpha))*(-1 + (1 - u1)**(-alpha) + u2**(-alpha))**(1/alpha))
-        elif un == 2:
-            y =   1 - 1/(u2*u2**alpha*(-1 + (1 - u1)**(-alpha) + u2**(-alpha))*(-1 + (1 - u1)**(-alpha) + u2**(-alpha))**(1/alpha)) 
-        try:
-            if np.isnan(y) == True:
-                y =  0.00001
-            if y < 0.00001:
-                y =  0.00001
-        except:
-            y[np.isnan(y)] = 0.00001
-            y[y<0.00001] = 0.00001
+    if un == 1:
+        y = distribution.hfunc(u2,u1,rho, un, family_code = cop)
 
-    #Clayton 180 degrees
-    if cop == 8:
+    if cop == 0: 
         if un == 1:
-            y = 1 - 1/((1 - u1)*(1 - u1)**alpha*(-1 + (1 - u2)**(-alpha) + (1 - u1)**(-alpha))*(-1 + (1 - u2)**(-alpha) + (1 - u1)**(-alpha))**(1/alpha))
-        elif un == 2:
-            y = 1 - 1/((1 - u2)*(1 - u2)**alpha*(-1 + (1 - u2)**(-alpha) + (1 - u1)**(-alpha))*(-1 + (1 - u2)**(-alpha) + (1 - u1)**(-alpha))**(1/alpha))
-        try:
-            if np.isnan(y) == True:
-                y =  0.00001
-            if y < 0.00001:
-                y =  0.00001
-        except:
-            y[np.isnan(y)] = 0.00001
-            y[y<0.00001] = 0.00001
-    # Clayton 270 degrees
-    if cop == 9:
-        if un == 1:
-            y =1 - 1/(u1*u1**alpha*(-1 + (1 - u2)**(-alpha) + u1**(-alpha))*(-1 + (1 - u2)**(-alpha) + u1**(-alpha))**(1/alpha))
-          
-        elif un == 2:
-            y =  1/((1 - u2)*(1 - u2)**alpha*(-1 + (1 - u2)**(-alpha) + u1**(-alpha))*(-1 + (1 - u2)**(-alpha) + u1**(-alpha))**(1/alpha))
-        try:
-            if np.isnan(y) == True:
-                y =  0.00001
-            if y < 0.00001:
-                y =  0.00001
-        except:
-            y[np.isnan(y)] = 0.00001
-            y[y<0.00001] = 0.00001
+            y = u2
+            
+        if un == 2:
+            y = u1
 
-    # Frank
-    if cop == 10:
-        if un == 1:
-            y = -(np.exp(alpha*u2) - 1)*np.exp(alpha)/(np.exp(alpha) - np.exp(alpha*(u1 + 1)) + np.exp(alpha*(u1 + u2)) - np.exp(alpha*(u2 + 1)))
-        if un == 2:
-            y = -(np.exp(alpha*u1) - 1)*np.exp(alpha)/(np.exp(alpha) - np.exp(alpha*(u1 + 1)) + np.exp(alpha*(u1 + u2)) - np.exp(alpha*(u2 + 1)))
-            
-    # Joe 0 degrees
-    if cop == 11:
-        if  un == 1:
-            y =(1 - u1)**(alpha - 1)*(1 - (1 - u2)**alpha)*(-(1 - u1)**alpha*(1 - u2)**alpha + (1 - u1)**alpha + (1 - u2)**alpha)**((1 - alpha)/alpha)
-        elif  un == 2:
-            y = (1 - u2)**(alpha - 1)*(1 - (1 - u1)**alpha)*(-(1 - u1)**alpha*(1 - u2)**alpha + (1 - u1)**alpha + (1 - u2)**alpha)**((1 - alpha)/alpha)
-    # Joe 90 degrees
-    if cop == 12:
-        if un == 1:
-            y =u1**(alpha - 1)*(1 - (1 - u2)**alpha)*(-u1**alpha*(1 - u2)**alpha + u1**alpha + (1 - u2)**alpha)**((1 - alpha)/alpha)
-        elif un == 2:
-            y =  ((1 - u1**alpha)*(1 - u2)**alpha*(-u1**alpha*(1 - u2)**alpha + u1**alpha + (1 - u2)**alpha)**(1/alpha) + (u2 - 1)*(-u1**alpha*(1 - u2)**alpha + u1**alpha + (1 - u2)**alpha))/((u2 - 1)*(-u1**alpha*(1 - u2)**alpha + u1**alpha + (1 - u2)**alpha))
-    # Joe 180 degrees
-    if cop == 13:
-        if un == 1:
-            y = (u1*(-u1**alpha*u2**alpha + u1**alpha + u2**alpha) + u1**alpha*(u2**alpha - 1)*(-u1**alpha*u2**alpha + u1**alpha + u2**alpha)**(1/alpha))/(u1*(-u1**alpha*u2**alpha + u1**alpha + u2**alpha))
-        elif un == 2:
-            y = (u2*(-u1**alpha*u2**alpha + u1**alpha + u2**alpha) + u2**alpha*(u1**alpha - 1)*(-u1**alpha*u2**alpha + u1**alpha + u2**alpha)**(1/alpha))/(u2*(-u1**alpha*u2**alpha + u1**alpha + u2**alpha))
-    # Joe 270 degrees
-    if cop == 14:
-        if un == 1:
-            y =((1 - u1)**alpha*(1 - u2**alpha)*(-u2**alpha*(1 - u1)**alpha + u2**alpha + (1 - u1)**alpha)**(1/alpha) + (u1 - 1)*(-u2**alpha*(1 - u1)**alpha + u2**alpha + (1 - u1)**alpha))/((u1 - 1)*(-u2**alpha*(1 - u1)**alpha + u2**alpha + (1 - u1)**alpha))  
-        elif un == 2:
-            y = u2**(alpha - 1)*(1 - (1 - u1)**alpha)*(-u2**alpha*(1 - u1)**alpha + u2**alpha + (1 - u1)**alpha)**((1 - alpha)/alpha)
-            
-    # Student
-    if cop == 15:
-        alpha = par[0]
-        df = par[1]
-        if un == 2:
-            x1 = st.t.ppf(u1, df) 
-            x2 = st.t.ppf(u2, df) 
-        elif un == 1:
-            x1 = st.t.ppf(u2, df) 
-            x2 = st.t.ppf(u1, df) 
-        inner = (x1 - (alpha * x2))/ np.sqrt(((df+x2**2)*(1-alpha**2))/(df+1))
-        y = st.t.cdf(inner, df = df+1)
     try:
         if y < 0.0001:
             y = 0.0001
@@ -873,7 +977,7 @@ def hfunc(cop, u1, u2, par, un = 1):
 
 #%% h-inverse func
 
-def hfuncinverse(cop, ui, y, par, un = 1):
+def hfuncinverse(cop, ui, y, par, un = 1, distribution = None):
     """
     Computes the inverse h-function (inverse conditional CDF) of a copula with respect to variable u1 or u2.
     
@@ -892,219 +996,32 @@ def hfuncinverse(cop, ui, y, par, un = 1):
      *uii* : A 1-d numpy array containing the inverse h-function of the copula evaluated with respect to u1 or u2.
       
     """
+    
 
-    #Gaussian
-    if cop == 1:
+    distribution = copula_distributions_bivariate[cop]
+    rho = par.copy()
+    x1 = ui
+    x2 = y
+    if un == 1:
+        uii = distribution.hinv(x1,x2,rho, un, family_code =cop)
+        
+    if un == 2:
+        uii = distribution.hinv(x2,x1,rho, un, family_code =cop)
+
+    if cop == 0:
         rho = par
-        x1 = st.norm.ppf(y)
-        x2 = st.norm.ppf(ui)
-        inner =( x1 * np.sqrt(1-rho**2)) + (rho * x2)
-        uii = st.norm.cdf(inner)
-        
-    if cop > 1:
-        alpha = par
-    #Gumbel
-    if cop > 1 and cop < 6:
-        y = np.array(np.round(y, 3))
-       # print(y)
-        y[y < 0.001] = 0.001
-        y[y > 0.999] = 0.999
-        ui = np.array(np.round(ui, 3))
-       # print(y)
-        ui[ui < 0.001] = 0.001
-        ui[ui > 0.999] = 0.999
-        # 0 degrees or 180 degrees
-        if cop == 2 or cop == 4:
-            uii_guess = ui
-        # 90 degrees or 270 degrees
-        else:
-            uii_guess = 1- ui
+        x1 = y
+        x2 = ui
+        #inner =( x1 * np.sqrt(1-rho**2)) + (rho * x2)
+        #uii = st.norm.cdf(inner)
+
+        rho = par
         if un == 1:
-            def equation(u2):
-                return hfunc(cop, ui, u2, par, un) - y
-            if len(ui) == 1:
-                try:
-                    uii = optimize.brentq(equation, 0.0001, 0.9999)
-                except:
-                    try:
-                        uii = newton(equation, uii_guess,maxiter=200000, tol=1e-6)
-                    except:
-                        pass
-                        try:
-                            uii_guess = 1 - uii_guess
-                            uii = newton(equation, uii_guess,maxiter=200000, tol=1e-6)
-                        except:
-                            pass
-                    
-
-                            for uii_guess in [0.001,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,0.9999]:
-                                try:
-                                    uii = newton(equation, np.array([uii_guess]),maxiter=200000, tol=1e-6)
-                                    break
-                                except:
-                                    pass
-                            
-                            try:
-                                k = uii
-                            except:
-                                print(ui)
-                                print(y)
-                                print(cop)
-            else:
-                try:
-                    uii = newton(equation, uii_guess,maxiter=200000, tol=1e-6)
-                except:
-                    pass
-                    try:
-                        uii_guess = 1 - uii_guess
-                        uii = newton(equation, uii_guess,maxiter=200000, tol=1e-6)
-                    except:
-                        pass
-                
-
-                    for uii_guess in [0.001,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,0.9999]:
-                        try:
-                            uii = newton(equation, np.array([uii_guess]),maxiter=200000, tol=1e-6)
-                            break
-                        except:
-                            pass
-                        
-                    try:
-                        k = uii
-                    except:
-                        print(ui)
-                        print(y)
-                        print(cop)
-                        print(par)
+            uii = x2
             
-                
         if un == 2:
-            def equation(u1):
-                return hfunc(cop, u1, ui, par, un) - y
-            if len(ui) == 1:
-                try:
-                    uii = optimize.brentq(equation, 0.0001, 0.9999)
-                except:
-                    try:
-                        uii = newton(equation, uii_guess,maxiter=200000, tol=1e-6)
-                    except:
-                        pass
-                        try:
-                            uii_guess = 1 - uii_guess
-                            uii = newton(equation, uii_guess,maxiter=200000, tol=1e-6)
-                        except:
-                            pass
-                    
-
-                            for uii_guess in [0.001,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,0.9999]:
-                                try:
-                                    uii = newton(equation, np.array([uii_guess]),maxiter=200000, tol=1e-6)
-                                    break
-                                except:
-                                    pass
-                            
-                            try:
-                                k = uii
-                            except:
-                                print(ui)
-                                print(y)
-                                print(cop)
-            else:
-                try:
-                    uii = newton(equation, uii_guess,maxiter=200000, tol=1e-6)
-                except:
-                    pass
-                    try:
-                        uii_guess = 1 - uii_guess
-                        uii = newton(equation, uii_guess,maxiter=200000, tol=1e-6)
-                    except:
-                        pass
-                
-
-                    for uii_guess in [0.001,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,0.9999]:
-                        try:
-                            uii = newton(equation, np.array([uii_guess]),maxiter=200000, tol=1e-6)
-                            break
-                        except:
-                            pass
-                        
-                    try:
-                        k = uii
-                    except:
-                        print(ui)
-                        print(y)
-                        print(cop)
-                        print(par)
-            
-                
-            
-
-    # Clayton
-    if cop > 5 and cop < 10:
-        # 0 degrees
-        v2 = y
-        if cop == 6:
-            uii = ((ui**-alpha)*((v2**(-alpha/(1+alpha)))-1)+1)**(-1/alpha)
-        # 90 degrees
-        if cop == 7:
-            if un == 1:
-                ui = 1- ui
-                uii = ((ui**-alpha)*((v2**(-alpha/(1+alpha)))-1)+1)**(-1/alpha) 
-            elif un == 2    :
-                v2 = 1 - v2
-                uii = 1 - ((ui**-alpha)*((v2**(-alpha/(1+alpha)))-1)+1)**(-1/alpha)
-        # 180 degrees
-        if cop == 8:
-            ui = 1 - ui
-            v2 = 1 - v2
-            uii = 1- ((ui**-alpha)*((v2**(-alpha/(1+alpha)))-1)+1)**(-1/alpha) 
-        # 270 degrees
-        if cop == 9:
-            if  un == 1 :
-                v2 = 1 - v2
-                uii = 1 - ((ui**-alpha)*((v2**(-alpha/(1+alpha)))-1)+1)**(-1/alpha)
-            elif un == 2:
-                ui = 1 - ui
-                uii = ((ui**-alpha)*((v2**(-alpha/(1+alpha)))-1)+1)**(-1/alpha)
-        try:
-            if np.isnan(ui) == True:
-                uii =  0.00001
-            if uii < 0.00001:
-                uii =  0.00001
-        except:
-            uii[np.isnan(uii)] = 0.00001
-            uii[ui<0.00001] = 0.00001
-                
-    # Frank
-    if cop == 10:
-        uii = (-1/alpha)*np.log(1+((y*(1-np.exp(-alpha)))/(y*(np.exp(-alpha*ui)-1)-np.exp(-alpha*ui))))
-        
-    # Joe
-    if cop > 10 and cop < 15:
-        # 0 degrees or 180 degrees
-        if cop == 11 or cop == 13:
-            uii_guess = ui
-        # 90 degrees or 270 degrees
-        else:
-            uii_guess = 1- ui
-        if un == 1:
-            def equation(u2):
-                return hfunc(cop, ui, u2, par, un) - y 
-           
-            uii = newton(equation, uii_guess,maxiter=2000, tol=1e-10)
-        if un == 2:
-            def equation(u1):
-                return hfunc(cop, u1, ui, par, un) - y
-            uii = newton(equation, uii_guess,maxiter=2000, tol=1e-10)
-            
-    # Student
-    if cop == 15:
-        alpha = par[0]
-        df = par[1]
-        xi = st.t.ppf(ui, df) 
-        xy= st.t.ppf(y, df) 
-        inner = xy * np.sqrt(((df+xi**2)*(1-alpha**2))/(df+1)) + (alpha*xi)
-        uii = st.t.cdf(inner, df = df)
+            uii = x2
+    
     try:
         if uii < 0.0001: 
             uii = 0.0001
@@ -1135,4 +1052,3 @@ def neg_likelihood(par,cop,u):
     """
     l = -np.sum(np.log(PDF(cop, u, par)))
     return l
-
