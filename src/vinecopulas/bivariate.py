@@ -21,24 +21,31 @@ import os
 import importlib
 from scipy import optimize
 
-#  Add your local package to the path
-ondil_path = r"C:\Users\OEK-admin\OneDrive\Arbeit_Uni\Uni_Due\ProjectII\ondil"
-if ondil_path not in sys.path:
-    sys.path.insert(0, ondil_path)
 
-print("Python Path:", sys.path)
-print("Current Working Directory:", os.getcwd())
+from ondil.estimators import MultivariateOnlineDistributionalRegressionPath
+from ondil.links import FisherZLink, KendallsTauToParameter, Log, KendallsTauToParameterClayton, LogShiftTwo, GumbelLink, KendallsTauToParameterGumbel
+from ondil.distributions import BivariateCopulaNormal, Normal, BivariateCopulaClayton, BivariateCopulaStudentT, BivariateCopulaGumbel
+
+
+
+#  Add your local package to the path
+#ondil_path = r"C:\Users\OEK-admin\OneDrive\Arbeit_Uni\Uni_Due\ProjectII\ondil"
+#if ondil_path not in sys.path:
+#    sys.path.insert(0, ondil_path)
+
+#print("Python Path:", sys.path)
+#print("Current Working Directory:", os.getcwd())
 
 #  HOT RELOAD: Clear old ondil modules from cache
-for name in list(sys.modules):
-    if "src.ondil" in name:  # adjust if your package is imported as ondil.* instead
-        del sys.modules[name]
-importlib.invalidate_caches()
+#for name in list(sys.modules):
+#    if "src.ondil" in name:  # adjust if your package is imported as ondil.* instead
+#        del sys.modules[name]
+#importlib.invalidate_caches()
 
 #  Import ondil classes
-from src.ondil.estimators import MultivariateOnlineDistributionalRegressionPath
-from src.ondil.links import FisherZLink, KendallsTauToParameter, KendallsTauToParameterClayton, Log, GumbelLink, KendallsTauToParameterGumbel, LogShiftTwo
-from src.ondil.distributions import BivariateCopulaNormal, BivariateCopulaClayton, BivariateCopulaGumbel, BivariateCopulaStudentT, Normal
+#from src.ondil.estimators import MultivariateOnlineDistributionalRegressionPath
+#from src.ondil.links import FisherZLink, KendallsTauToParameter, KendallsTauToParameterClayton, Log, GumbelLink, KendallsTauToParameterGumbel, LogShiftTwo
+#from src.ondil.distributions import BivariateCopulaNormal, BivariateCopulaClayton, BivariateCopulaGumbel, BivariateCopulaStudentT, Normal
 
 #%% Copulas
 
@@ -290,7 +297,7 @@ def bestcop(cops, u, X, early_stopped=False):
             estimator = MultivariateOnlineDistributionalRegressionPath(
                 distribution=copula_distributions_bivariate[cop],
                 equation=equation,
-                method="lasso",
+                method="ols",
                 early_stopping=False,
                 early_stopping_criteria="bic",
                 iteration_along_diagonal=False,
