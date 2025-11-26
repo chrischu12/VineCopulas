@@ -1630,6 +1630,10 @@ def fit_vinecopstructure(u1, copsi, a, X, online =0, E=None, printing = True):
     e[:] = np.nan
     e = e.astype(object)
 
+    b = np.empty((dimen, dimen))
+    b[:] = np.nan
+    b = b.astype(object)
+
     # fill array p with the parameters and c with the copulas, corresponding to the structure in c
     for i in list(range(dimen-1)):
         orde = order[order.tree == i]
@@ -1642,6 +1646,7 @@ def fit_vinecopstructure(u1, copsi, a, X, online =0, E=None, printing = True):
                     orderj = order.loc[[orde.index[j]]]
                     p[i, k] = orderj.rhos.iloc[0]
                     c[i, k] = orderj.cop.iloc[0]
+                    b[i,k] = orderj.coefs.iloc[0]
                     if online != 1:
                         e[i,k] = orderj.estimators.iloc[0]
                     if i == 0:
@@ -1677,7 +1682,7 @@ def fit_vinecopstructure(u1, copsi, a, X, online =0, E=None, printing = True):
                 )
         
 
-    return e, p, c, a
+    return e, b, p, c, a
 
 
 # %% Sampling vine copula

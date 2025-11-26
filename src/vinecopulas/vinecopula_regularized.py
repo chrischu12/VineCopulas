@@ -19,8 +19,7 @@ import importlib
 import sys
 
 
-from src.vinecopulas.marginals import *
-from src.vinecopulas.bivariate import *
+from vinecopulas.bivariate import *
 
 # %% Copulas
 
