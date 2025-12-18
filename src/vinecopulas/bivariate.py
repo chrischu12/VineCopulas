@@ -50,6 +50,7 @@ from ondil.distributions import BivariateCopulaNormal, Normal, BivariateCopulaCl
 #%% Copulas
 
 copulas = {
+    0: "Independence",
     1: "Gaussian",
     2: "StudentT",
     31: "Clayton I",
@@ -63,6 +64,9 @@ copulas = {
 }
 
 copula_distributions_bivariate = {
+
+    0: "Independence",
+
     1: BivariateCopulaNormal(
     link=FisherZLink(),
     param_link=KendallsTauToParameter()
@@ -122,7 +126,9 @@ copula_distributions_bivariate = {
 
 def select_copulas(codes):
     _all_copula_distributions = copula_distributions_bivariate.copy()
-    return {c: _all_copula_distributions[c] for c in codes if c in _all_copula_distributions}
+    selected_codes = set(codes)
+    selected_codes.add(0)
+    return {c: _all_copula_distributions[c] for c in selected_codes if c in _all_copula_distributions}
 
 # Reverse mapping: distribution instance type to copula number
 def get_copula_number(distribution_instance):
@@ -256,6 +262,8 @@ def bestcop(cops, u, X, early_stopped=False):
         PAR = []
         COEF = []
         LOGLIK = []
+        ESTIM = []
+
         n_rows = u.shape[0]
         n_cols = X.shape[1]
         #for cop in cops:
@@ -271,13 +279,17 @@ def bestcop(cops, u, X, early_stopped=False):
         AIC.append(0)
         PAR.append(np.zeros(n_rows))
         COEF.append(np.zeros(n_cols))
+        ESTIM.append(None)
 
         i = np.where(AIC == np.nanmin(AIC))[0][0]  
         cop = 0
+        distribution = "Independence"
         par = PAR
         aic = AIC
         coef = COEF
         loglik = LOGLIK
+        estim = ESTIM
+
 
     else:   
         AIC = []
@@ -305,25 +317,38 @@ def bestcop(cops, u, X, early_stopped=False):
                 max_iterations_inner=20,
                 max_iterations_outer=1,
                 scale_inputs=False,
+                fit_intercept=False,
             )
             
-            estimator.fit(X, u)
+            try:
+                estimator.fit(X, u)
 
-            if cop == 2:
-                par = estimator.predict_distribution_parameters(X) 
-            else:
-                par = estimator.predict(X)
-          
-        
-            #if cop == 15:
-                #AIC.append(4 + (2 * neg_likelihood(par,cop,u)))
-                #PAR.append(par)
-            #else:
-            AIC.append(2 + (2 * -estimator._current_likelihood))
-            PAR.append(par)
-            LOGLIK.append(estimator._current_likelihood)
-            COEF.append(estimator.coef_)
-            ESTIM.append(estimator)
+                if cop == 2:
+                    par = estimator.predict_distribution_parameters(X)
+                else:
+                    par = estimator.predict(X)
+
+                AIC.append(2 + (2 * -estimator._current_likelihood))
+                PAR.append(par)
+                LOGLIK.append(estimator._current_likelihood)
+                COEF.append(estimator.coef_)
+                ESTIM.append(estimator)
+            except Exception:
+                if len(AIC) > 0:
+                    AIC.append(AIC[-1])
+                    PAR.append(PAR[-1])
+                    LOGLIK.append(LOGLIK[-1])
+                    COEF.append(COEF[-1])
+                    ESTIM.append(ESTIM[-1])
+                else:
+                    n_rows = u.shape[0]
+                    n_cols = X.shape[1]
+                    AIC.append(0)
+                    PAR.append(np.zeros(n_rows).reshape(-1,1))
+                    LOGLIK.append(0)
+                    COEF.append(np.zeros(n_cols))
+                    ESTIM.append(None)
+
 
         i = np.where(AIC == np.nanmin(AIC))[0][0]  
         cop = cops[i]
@@ -362,30 +387,40 @@ def bestcop_online(estimator, u, X):
     COEF = []
     LOGLIK = []
     ESTIM = []
-    
-    cop = get_copula_number(estimator.distribution)
+    if estimator == [None]:
+        cop = 0
+        distribution = "Independence"
+        par = np.zeros(u.shape[0])
+        aic = 0
+        coef = np.zeros(X.shape[1])
+        loglik = 0
+    else: 
+        cop = get_copula_number(estimator.distribution)
 
-    estimator.update(X, u)
+        estimator.update(X, u)
 
-    if cop == 2:
-        par = estimator.predict_distribution_parameters(X) 
-    else:
-        par = estimator.predict(X)
+        if cop == 2:
+            par = estimator.predict_distribution_parameters(X) 
+        else:
+            par = estimator.predict(X)
 
-    
-    AIC.append(2 + (2 * -estimator._current_likelihood))
-    PAR.append(par)
-    LOGLIK.append(estimator._current_likelihood)
-    COEF.append(estimator.coef_)
+        
+        AIC.append(2 + (2 * -estimator._current_likelihood))
+        PAR.append(par)
+        LOGLIK.append(estimator._current_likelihood)
+        COEF.append(estimator.coef_)
+        ESTIM.append(estimator)
 
-    cop = get_copula_number(estimator.distribution)
-    distribution = estimator.distribution
-    par = PAR
-    aic = AIC
-    coef = COEF
-    loglik = LOGLIK
+        cop = get_copula_number(estimator.distribution)
+        distribution = estimator.distribution
+        par = PAR
+        aic = AIC
+        coef = COEF
+        loglik = LOGLIK
+        estim = ESTIM
 
-    return cop, distribution, par, aic, coef, loglik
+
+    return cop, distribution, par, aic, coef, loglik, estim
 
 
 
@@ -955,21 +990,23 @@ def hfunc(cop, u1, u2, par, un = 1, distribution = None):
             u1 = 0.9999
     
 
-    distribution = copula_distributions_bivariate[cop]
-    rho = par
-
-    if un == 2:
-        y = distribution.hfunc(u1,u2,rho, un, family_code = cop)
-        
-    if un == 1:
-        y = distribution.hfunc(u2,u1,rho, un, family_code = cop)
-
     if cop == 0: 
         if un == 1:
             y = u2
             
         if un == 2:
             y = u1
+    else:
+        distribution = copula_distributions_bivariate[cop]
+        rho = par
+
+        if un == 2:
+            y = distribution.hfunc(u1,u2,rho, un, family_code = cop)
+            
+        if un == 1:
+            y = distribution.hfunc(u2,u1,rho, un, family_code = cop)
+
+  
 
     try:
         if y < 0.0001:
@@ -1004,17 +1041,6 @@ def hfuncinverse(cop, ui, y, par, un = 1, distribution = None):
       
     """
     
-
-    distribution = copula_distributions_bivariate[cop]
-    rho = par.copy()
-    x1 = ui
-    x2 = y
-    if un == 1:
-        uii = distribution.hinv(x1,x2,rho, un, family_code =cop)
-        
-    if un == 2:
-        uii = distribution.hinv(x2,x1,rho, un, family_code =cop)
-
     if cop == 0:
         rho = par
         x1 = y
@@ -1028,6 +1054,18 @@ def hfuncinverse(cop, ui, y, par, un = 1, distribution = None):
             
         if un == 2:
             uii = x2
+    else:
+        distribution = copula_distributions_bivariate[cop]
+        rho = par.copy()
+        x1 = ui
+        x2 = y
+        if un == 1:
+            uii = distribution.hinv(x1,x2,rho, un, family_code =cop)
+            
+        if un == 2:
+            uii = distribution.hinv(x2,x1,rho, un, family_code =cop)
+
+    
     
     try:
         if uii < 0.0001: 
