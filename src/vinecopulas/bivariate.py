@@ -236,7 +236,7 @@ def fit_vine_copulas(cop, u):
 #%% best fit
 
 
-def bestcop(cops, u, X, early_stopped=False):
+def bestcop(cops, u, X, early_stopped=False, edge = edge):
     """
     Fits the best copula to data based on a selected list of copulas to fit to using the AIC.
     
@@ -298,12 +298,22 @@ def bestcop(cops, u, X, early_stopped=False):
         LOGLIK = []
         ESTIM = []
         for cop in cops:
+
+            def get_index(X, edge: int) -> np.ndarray:
+                cols = X.columns
+                regions_ordered = ["P", "N", "F", "M", "G", "D", "K", "E", "B", "A", "C", "J", "H", "L"]
+                region1 = regions_ordered[edge[0]]
+                region2 = regions_ordered[edge[1]]
+                mask1 = cols.str.contains(f"{region1}_")
+                mask2 = cols.str.contains(f"{region2}_")
+            return mask1 & mask2
+        
             equation = {
                 0: {
-                    h: np.arange(X.shape[1])
-                    for h in range(u.shape[1])
+                np.arange(X.shape[1])[get_index(X, edge)]
                 }
             }
+
             copula_distributions_bivariate[cop]
         
             estimator = MultivariateOnlineDistributionalRegressionPath(

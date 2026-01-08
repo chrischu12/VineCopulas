@@ -1406,6 +1406,7 @@ def fit_vinecopstructure(u1, copsi, a, X, online =0, E=None, printing = True,  m
                 print(" Fitting edge ", j)
                 v1i = int(orderk.v1[j])  # first node
                 v2i = int(orderk.v2[j])  # second node
+                edge = [v1i, v2i]
                 tauabs.append(
                 abs(st.kendalltau(u1[:, v1i], u1[:, v2i])[0])
                 ) 
@@ -1416,7 +1417,7 @@ def fit_vinecopstructure(u1, copsi, a, X, online =0, E=None, printing = True,  m
                     estimator = orderk.estimator[j]
                     cop, dist, rho, aic, coef, loglik, estim = bestcop_online(estimator, u3, X)  
                 else:
-                    cop, dist, rho, aic, coef, loglik, estim = bestcop(copsi, u3, X)  # fit the best copula
+                    cop, dist, rho, aic, coef, loglik, estim = bestcop(copsi, u3, X, edge=edge)  # fit the best copula
 
                 rhos.append(rho)  # add parameters to rhos
                 coefs.append(coef)  # add coefficients to coefs
@@ -1497,6 +1498,7 @@ def fit_vinecopstructure(u1, copsi, a, X, online =0, E=None, printing = True,  m
                 v2i = orderk2.v2[i]
                 v1j = orderk2.v1[j]  # parent node 1 from nodej in tree
                 v2j = orderk2.v2[j]  # parent node 2 from nodej in tree
+                edge = [v1i, v2i]
                 ui1 = v1s[:, i]
                 ui2 = v2s[:, i]
                 uj1 = v1s[:, j]
@@ -1559,7 +1561,7 @@ def fit_vinecopstructure(u1, copsi, a, X, online =0, E=None, printing = True,  m
                     estimator = orderk.estimator[k]
                     cop, dist, rho, aic, coef, loglik, estim = bestcop_online(estimator, u3, X)  
                 else:
-                    cop, dist, rho, aic, coef, loglik, estim = bestcop(copsi, u3, X, early_stopped = early_stopped)  # fit the best copula
+                    cop, dist, rho, aic, coef, loglik, estim = bestcop(copsi, u3, X, early_stopped = early_stopped, edge=edge)  # fit the best copula
 
                 rhos.append(rho)  # add parameters to rhos
                 coefs.append(coef)
