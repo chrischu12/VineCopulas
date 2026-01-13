@@ -1166,7 +1166,6 @@ def fit_vinecop(u1, X, copsi, vine="R", printing=True, distribution=None, estima
     c = np.empty((dimen, dimen))
     a[:] = np.nan
     c[:] = np.nan
-    print(a)
 
     order["used"] = 0  # set used to 0 for nodes that have not been used
     for i in list(range(dimen-1))[
@@ -1330,7 +1329,7 @@ def density_vinecop(u, M, P, C):
     
 
 # %% fitting vine copula with specific structure
-def fit_vinecopstructure(u1, copsi, a, X, online =0, E=None, printing = True,  min_ll_increase=1e-4, truncation = False):
+def fit_vinecopstructure(u1, copsi, a, X_df, online =0, E=None, printing = True,  min_ll_increase=1e-4, truncation = False, application = False):
     """
     Fit a regular vine copula to data based on a known vine structure matrix.
 
@@ -1347,8 +1346,9 @@ def fit_vinecopstructure(u1, copsi, a, X, online =0, E=None, printing = True,  m
      *c* : The types of the bivariate copulae provided as a triangular matrix, composed of integers referring to the copulae with the best fit. eg. a 1 refers to the gaussian copula (see `Table 1 <https://vinecopulas.readthedocs.io/en/latest/vinecopulas.html#Fitting-a-Vine-Copula>`__).
 
     """
-
-    
+    application = application
+    X_cols = X_df.columns.to_numpy()     # keep names
+    X = X_df.to_numpy()   
     dimen = a.shape[0]  # number of variables (number of columns)
     order = pd.DataFrame(
         columns=["node", "l", "r", "tree", "estimator"]
@@ -1417,7 +1417,7 @@ def fit_vinecopstructure(u1, copsi, a, X, online =0, E=None, printing = True,  m
                     estimator = orderk.estimator[j]
                     cop, dist, rho, aic, coef, loglik, estim = bestcop_online(estimator, u3, X)  
                 else:
-                    cop, dist, rho, aic, coef, loglik, estim = bestcop(copsi, u3, X, edge=edge)  # fit the best copula
+                    cop, dist, rho, aic, coef, loglik, estim = bestcop(copsi, u3, X, X_cols, edge=edge, application=application)  # fit the best copula
 
                 rhos.append(rho)  # add parameters to rhos
                 coefs.append(coef)  # add coefficients to coefs
@@ -1561,7 +1561,7 @@ def fit_vinecopstructure(u1, copsi, a, X, online =0, E=None, printing = True,  m
                     estimator = orderk.estimator[k]
                     cop, dist, rho, aic, coef, loglik, estim = bestcop_online(estimator, u3, X)  
                 else:
-                    cop, dist, rho, aic, coef, loglik, estim = bestcop(copsi, u3, X, early_stopped = early_stopped, edge=edge)  # fit the best copula
+                    cop, dist, rho, aic, coef, loglik, estim = bestcop(copsi, u3, X, X_cols, early_stopped = early_stopped, edge=edge, application=application)  # fit the best copula
 
                 rhos.append(rho)  # add parameters to rhos
                 coefs.append(coef)
@@ -1696,10 +1696,6 @@ def fit_vinecopstructure(u1, copsi, a, X, online =0, E=None, printing = True,  m
         
 
     return e, b, p, c, a
-
-
-    
-
 
 # %% Sampling vine copula
 def sample_vinecop(a, p, c, s):

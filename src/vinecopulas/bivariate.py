@@ -145,7 +145,13 @@ def get_copula_number(distribution_instance):
     
     for cop_num, dist in copula_distributions_bivariate.items():
         if type(dist).__name__ == type_name:
-            return cop_num
+            # For distributions with family_code, match both type and family_code
+            if hasattr(dist, 'family_code') and hasattr(distribution_instance, 'family_code'):
+                if dist.family_code == distribution_instance.family_code:
+                    return cop_num
+            else:
+                # For distributions without family_code (e.g., Gaussian, StudentT)
+                return cop_num
     
     return None
 
@@ -236,7 +242,7 @@ def fit_vine_copulas(cop, u):
 #%% best fit
 
 
-def bestcop(cops, u, X, early_stopped=False, edge = edge):
+def bestcop(cops, u, X, X_cols, early_stopped=False, edge=None, application = None):
     """
     Fits the best copula to data based on a selected list of copulas to fit to using the AIC.
     
@@ -297,29 +303,42 @@ def bestcop(cops, u, X, early_stopped=False, edge = edge):
         COEF = []
         LOGLIK = []
         ESTIM = []
-        for cop in cops:
+        def get_index(cols: np.ndarray, edge) -> np.ndarray:
+            """
+            cols: np.ndarray of column names (shape (p,))
+            edge: tuple/list of ints, e.g. (0, 1)
+            returns: boolean mask selecting columns for the two regions in edge
+            """
+            regions_ordered = ["P", "N", "F", "M", "G", "D", "K", "E", "B", "A", "C", "J", "H", "L"]
+            r1 = regions_ordered[int(edge[0])]
+            r2 = regions_ordered[int(edge[1])]
 
-            def get_index(X, edge: int) -> np.ndarray:
-                cols = X.columns
-                regions_ordered = ["P", "N", "F", "M", "G", "D", "K", "E", "B", "A", "C", "J", "H", "L"]
-                region1 = regions_ordered[edge[0]]
-                region2 = regions_ordered[edge[1]]
-                mask1 = cols.str.contains(f"{region1}_")
-                mask2 = cols.str.contains(f"{region2}_")
-            return mask1 & mask2
-        
+            # fast vectorized prefix match
+            return np.char.startswith(cols.astype(str), r1 + "_") | np.char.startswith(cols.astype(str), r2 + "_")
+
+        if application == True:
+
             equation = {
-                0: {
-                np.arange(X.shape[1])[get_index(X, edge)]
+                0: { 0:np.arange(X.shape[1])[get_index(X_cols, edge)]
                 }
             }
+        else:
+            equation = {
+                    0: {
+                        h: np.arange(X.shape[1])
+                        for h in range(u.shape[1])
+                        }
+            }
+
+
+        for cop in cops:
 
             copula_distributions_bivariate[cop]
         
             estimator = MultivariateOnlineDistributionalRegressionPath(
                 distribution=copula_distributions_bivariate[cop],
                 equation=equation,
-                method="ols",
+                method="lasso",
                 early_stopping=False,
                 early_stopping_criteria="bic",
                 iteration_along_diagonal=False,
@@ -327,7 +346,8 @@ def bestcop(cops, u, X, early_stopped=False, edge = edge):
                 max_iterations_inner=20,
                 max_iterations_outer=1,
                 scale_inputs=False,
-                fit_intercept=False,
+                fit_intercept=True,
+                forget = 0.001
             )
             
             try:
@@ -404,6 +424,7 @@ def bestcop_online(estimator, u, X):
         aic = 0
         coef = np.zeros(X.shape[1])
         loglik = 0
+        estim = None   # <-- add this
     else: 
         cop = get_copula_number(estimator.distribution)
 
@@ -420,7 +441,6 @@ def bestcop_online(estimator, u, X):
         LOGLIK.append(estimator._current_likelihood)
         COEF.append(estimator.coef_)
         ESTIM.append(estimator)
-
         cop = get_copula_number(estimator.distribution)
         distribution = estimator.distribution
         par = PAR
