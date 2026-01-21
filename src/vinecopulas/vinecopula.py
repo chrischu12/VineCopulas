@@ -1417,7 +1417,7 @@ def fit_vinecopstructure(u1, copsi, a, X_df, online =0, E=None, printing = True,
                     estimator = orderk.estimator[j]
                     cop, dist, rho, aic, coef, loglik, estim = bestcop_online(estimator, u3, X)  
                 else:
-                    cop, dist, rho, aic, coef, loglik, estim = bestcop(copsi, u3, X, X_cols, edge=edge, application=application)  # fit the best copula
+                    cop, dist, rho, aic, coef, loglik, estim = bestcop(copsi, u3, X, X_cols, edge=edge, application=application, t = t)  # fit the best copula
 
                 rhos.append(rho)  # add parameters to rhos
                 coefs.append(coef)  # add coefficients to coefs
@@ -1561,7 +1561,7 @@ def fit_vinecopstructure(u1, copsi, a, X_df, online =0, E=None, printing = True,
                     estimator = orderk.estimator[k]
                     cop, dist, rho, aic, coef, loglik, estim = bestcop_online(estimator, u3, X)  
                 else:
-                    cop, dist, rho, aic, coef, loglik, estim = bestcop(copsi, u3, X, X_cols, early_stopped = early_stopped, edge=edge, application=application)  # fit the best copula
+                    cop, dist, rho, aic, coef, loglik, estim = bestcop(copsi, u3, X, X_cols, early_stopped = early_stopped, edge=edge, application=application, t=t)  # fit the best copula
 
                 rhos.append(rho)  # add parameters to rhos
                 coefs.append(coef)
@@ -1871,7 +1871,7 @@ def simulate_vinecop(a, x, beta, c, s):
         for i in range(k + 1, n + 1)[::-1]:
             Z1[:, i, k] = Vdir[:, i, k]
             P = copula_distributions[1].element_link_inverse(x@beta, 0).reshape(-1, 1)
-            P = copula_distributions[C[i,k]].param_link_inverse( P, 0).reshape(-1, 1)
+            P = copula_distributions[C[i,k]].param_link_inverse(P, 0).reshape(-1, 1)
 
             Vdir[:, int(i - 1), k] = hfunc(
                 int(C[i, k]), Z1[:, i, k], Z2[:, i, k], P, un=2
