@@ -1330,7 +1330,7 @@ def fit_vinecop(u1, X_df, copsi, vine="R", online = 0, E=None, printing=True, di
 
     return e, b, p, c, a
 
-def density_vinecop(u, M, P, C):
+def density_vinecop(u, M , P, C):
     """
     Computes the density function of a vine copula.
 
@@ -1350,8 +1350,7 @@ def density_vinecop(u, M, P, C):
      *F* :  A 1-d numpy array containing the probability density function of the vine copula
 
     """
-    U = u[:,list(np.diag(M[::-1])[::-1].astype(int))]
-
+    U = u[:, list(np.diag(M[::-1])[::-1].astype(int))]
     a = M.copy()
     p = P.copy()
     c = C.copy()
@@ -1392,11 +1391,11 @@ def density_vinecop(u, M, P, C):
     Z2[:] = np.nan
     # Z1
     Z1 = np.empty((s, M.shape[0], M.shape[0]))
-    Z2[:] = np.nan
+    Z1[:] = np.nan
     Vdir[:, -1, :] =  np.flip(U.copy(), 1)
     X = np.flip(U.copy(), 1)
     n = M.shape[0] - 1
-    F = 1
+    F = np.ones(s, dtype=float).reshape(-1,1)
 
     for k in list(reversed((range(0,n)))):
         for i in range(k+1, n+1)[::-1]:
@@ -1408,7 +1407,8 @@ def density_vinecop(u, M, P, C):
                 Z2[:, i, k] = Vindir[:, i, int(n - Mm[i, k])]
             
 
-            F = F * PDF(int(C[i, k]),np.vstack((Z1[:, i, k], Z2[:, i, k])).T,P[i, k])
+            F = F * copula_distributions[int(C[i, k])].pdf(np.vstack((Z1[:, i, k], Z2[:, i, k])).T,P[i, k]).reshape(-1,1)
+            
             Vdir[:, int(i - 1), k] = hfunc(
                 int(C[i, k]), Z1[:, i, k], Z2[:, i, k], P[i, k], un=2
             )
