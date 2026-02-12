@@ -20,32 +20,13 @@ import sys
 import os
 import importlib
 from scipy import optimize
+import re
 
 
 from ondil.estimators import MultivariateOnlineDistributionalRegressionPath
 from ondil.links import FisherZLink, KendallsTauToParameter, Log, KendallsTauToParameterClayton, LogShiftTwo, GumbelLink, KendallsTauToParameterGumbel
 from ondil.distributions import BivariateCopulaNormal, Normal, BivariateCopulaClayton, BivariateCopulaStudentT, BivariateCopulaGumbel
 
-
-
-#  Add your local package to the path
-#ondil_path = r"C:\Users\OEK-admin\OneDrive\Arbeit_Uni\Uni_Due\ProjectII\ondil"
-#if ondil_path not in sys.path:
-#    sys.path.insert(0, ondil_path)
-
-#print("Python Path:", sys.path)
-#print("Current Working Directory:", os.getcwd())
-
-#  HOT RELOAD: Clear old ondil modules from cache
-#for name in list(sys.modules):
-#    if "src.ondil" in name:  # adjust if your package is imported as ondil.* instead
-#        del sys.modules[name]
-#importlib.invalidate_caches()
-
-#  Import ondil classes
-#from src.ondil.estimators import MultivariateOnlineDistributionalRegressionPath
-#from src.ondil.links import FisherZLink, KendallsTauToParameter, KendallsTauToParameterClayton, Log, GumbelLink, KendallsTauToParameterGumbel, LogShiftTwo
-#from src.ondil.distributions import BivariateCopulaNormal, BivariateCopulaClayton, BivariateCopulaGumbel, BivariateCopulaStudentT, Normal
 
 #%% Copulas
 
@@ -304,8 +285,7 @@ def bestcop(cops, u, X, X_cols, early_stopped=False, edge=None, application = No
         LOGLIK = []
         ESTIM = []
 
-        import numpy as np
-        import re
+   
 
         def get_index(cols, edge) -> np.ndarray:
             """
@@ -453,12 +433,99 @@ def bestcop(cops, u, X, X_cols, early_stopped=False, edge=None, application = No
                             for h in range(1)
                             }
                 }
+                
+                for cop in cops:
+                    estimator = MultivariateOnlineDistributionalRegressionPath(
+                        distribution=copula_distributions_bivariate[cop],
+                        equation=equation,
+                        method="ols",
+                        early_stopping=False,
+                        early_stopping_criteria="bic",
+                        iteration_along_diagonal=False,
+                        verbose=3,
+                        max_iterations_inner=20,
+                        max_iterations_outer=1,
+                        scale_inputs=False,
+                        fit_intercept=True,
+                        forget = 0,
+                        )
+                    #try:
+                    estimator.fit(X, u)
+
+                    if cop == 2:
+                        par = estimator.predict_distribution_parameters(X)
+                    else:
+                        par = estimator.predict(X)
+
+                    AIC.append(2 + (2 * -estimator._current_likelihood))
+                    PAR.append(par)
+                    LOGLIK.append(estimator._current_likelihood)
+                    COEF.append(estimator.coef_)
+                    ESTIM.append(estimator)
+                    #except Exception:
+                        #if len(AIC) > 0:
+                        #    AIC.append(AIC[-1])
+                        #    PAR.append(PAR[-1])
+                        #    LOGLIK.append(LOGLIK[-1])
+                        #    COEF.append(COEF[-1])
+                        #    ESTIM.append(ESTIM[-1])
+                        #else:
+                        #    n_rows = u.shape[0]
+                        #    n_cols = X.shape[1]
+                        #    AIC.append(0)
+                        #    PAR.append(np.zeros(n_rows).reshape(-1,1))
+                        #    LOGLIK.append(0)
+                        #    COEF.append(np.zeros(n_cols))
+                        #    ESTIM.append(None)
             else:  
                 equation = {  
                         0: { h: "intercept"
                             for h in range(1)
                         }
                 }
+                for cop in cops:
+                    estimator = MultivariateOnlineDistributionalRegressionPath(
+                        distribution=copula_distributions_bivariate[cop],
+                        equation=equation,
+                        method="ols",
+                        early_stopping=False,
+                        early_stopping_criteria="bic",
+                        iteration_along_diagonal=False,
+                        verbose=3,
+                        max_iterations_inner=20,
+                        max_iterations_outer=1,
+                        scale_inputs=False,
+                        fit_intercept=True,
+                        forget = 0,
+                        )
+                    #try:
+                    estimator.fit(X, u)
+
+                    if cop == 2:
+                        par = estimator.predict_distribution_parameters(X)
+                    else:
+                        par = estimator.predict(X)
+
+                    AIC.append(2 + (2 * -estimator._current_likelihood))
+                    PAR.append(par)
+                    LOGLIK.append(estimator._current_likelihood)
+                    COEF.append(estimator.coef_)
+                    ESTIM.append(estimator)
+                    #except Exception:
+                        #if len(AIC) > 0:
+                        #    AIC.append(AIC[-1])
+                        #    PAR.append(PAR[-1])
+                        #    LOGLIK.append(LOGLIK[-1])
+                        #    COEF.append(COEF[-1])
+                        #    ESTIM.append(ESTIM[-1])
+                        #else:
+                        #    n_rows = u.shape[0]
+                        #    n_cols = X.shape[1]
+                        #    AIC.append(0)
+                        #    PAR.append(np.zeros(n_rows).reshape(-1,1))
+                        #    LOGLIK.append(0)
+                        #    COEF.append(np.zeros(n_cols))
+                        #    ESTIM.append(None)
 
 
 

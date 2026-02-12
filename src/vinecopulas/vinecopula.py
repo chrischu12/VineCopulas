@@ -1437,7 +1437,6 @@ def fit_vinecopstructure(u1, copsi, a, X_df, online =0, E=None, printing = True,
      *c* : The types of the bivariate copulae provided as a triangular matrix, composed of integers referring to the copulae with the best fit. eg. a 1 refers to the gaussian copula (see `Table 1 <https://vinecopulas.readthedocs.io/en/latest/vinecopulas.html#Fitting-a-Vine-Copula>`__).
 
     """
-    application = application
     X_cols = X_df.columns.to_numpy()     # keep names
     X = X_df.to_numpy()
     dimen = a.shape[0]  # number of variables (number of columns)
