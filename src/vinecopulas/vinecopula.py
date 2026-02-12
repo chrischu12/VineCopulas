@@ -1439,7 +1439,7 @@ def fit_vinecopstructure(u1, copsi, a, X_df, online =0, E=None, printing = True,
     """
     application = application
     X_cols = X_df.columns.to_numpy()     # keep names
-    X = X_df.to_numpy()   
+    X = X_df.to_numpy()
     dimen = a.shape[0]  # number of variables (number of columns)
     order = pd.DataFrame(
         columns=["node", "l", "r", "tree", "estimator"]

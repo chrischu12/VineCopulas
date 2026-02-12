@@ -305,7 +305,6 @@ def bestcop(cops, u, X, X_cols, early_stopped=False, edge=None, application = No
         ESTIM = []
 
         import numpy as np
-        import pandas as pd
         import re
 
         def get_index(cols, edge) -> np.ndarray:
@@ -367,7 +366,7 @@ def bestcop(cops, u, X, X_cols, early_stopped=False, edge=None, application = No
                         forget = 0,
                         )
                     
-                    #try:
+                #try:
                     estimator.fit(X, u)
 
                     if cop == 2:
@@ -380,21 +379,21 @@ def bestcop(cops, u, X, X_cols, early_stopped=False, edge=None, application = No
                     LOGLIK.append(estimator._current_likelihood)
                     COEF.append(estimator.coef_)
                     ESTIM.append(estimator)
-                    #except Exception:
-                        #if len(AIC) > 0:
-                        #    AIC.append(AIC[-1])
-                        #    PAR.append(PAR[-1])
-                        #    LOGLIK.append(LOGLIK[-1])
-                        #    COEF.append(COEF[-1])
-                        #    ESTIM.append(ESTIM[-1])
-                        #else:
+                #except Exception:
+                 #       if len(AIC) > 0:
+                  #          AIC.append(AIC[-1])
+                   #         PAR.append(PAR[-1])
+                    #        LOGLIK.append(LOGLIK[-1])
+                     #       COEF.append(COEF[-1])
+                      #      ESTIM.append(ESTIM[-1])
+                       # else:
                         #    n_rows = u.shape[0]
-                        #    n_cols = X.shape[1]
-                        #    AIC.append(0)
-                        #    PAR.append(np.zeros(n_rows).reshape(-1,1))
-                        #    LOGLIK.append(0)
-                        #    COEF.append(np.zeros(n_cols))
-                        #    ESTIM.append(None)
+                         #   n_cols = X.shape[1]
+                          #  AIC.append(0)
+                           # PAR.append(np.zeros(n_rows).reshape(-1,1))
+                            #LOGLIK.append(0)
+                            #COEF.append(np.zeros(n_cols))
+                            #ESTIM.append(None)
             else:  
                 equation = {  
                         0: { 0: "intercept"
