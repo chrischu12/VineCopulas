@@ -1407,13 +1407,13 @@ def density_vinecop(u, M , P, C):
                 Z2[:, i, k] = Vindir[:, i, int(n - Mm[i, k])]
             
 
-            F = F * copula_distributions[int(C[i, k])].pdf(np.vstack((Z1[:, i, k], Z2[:, i, k])).T,P[i, k]).reshape(-1,1)
+            F = F * copula_distributions[int(C[i, k])].pdf(np.vstack((Z1[:, i, k], Z2[:, i, k])).T,P[i, k].reshape(-1,1)).reshape(-1,1)
             
             Vdir[:, int(i - 1), k] = hfunc(
-                int(C[i, k]), Z1[:, i, k], Z2[:, i, k], P[i, k], un=2
+                int(C[i, k]), Z1[:, i, k], Z2[:, i, k], P[i, k].reshape(-1,1), un=2
             )
             Vindir[:, int(i - 1), k] = hfunc(
-                int(C[i, k]), Z1[:, i, k], Z2[:, i, k], P[i, k], un=1
+                int(C[i, k]), Z1[:, i, k], Z2[:, i, k], P[i, k].reshape(-1,1), un=1
             )
     return F
 

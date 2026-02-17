@@ -26,7 +26,9 @@ import re
 from ondil.estimators import MultivariateOnlineDistributionalRegressionPath
 from ondil.links import FisherZLink, KendallsTauToParameter, Log, KendallsTauToParameterClayton, LogShiftTwo, GumbelLink, KendallsTauToParameterGumbel
 from ondil.distributions import BivariateCopulaNormal, Normal, BivariateCopulaClayton, BivariateCopulaStudentT, BivariateCopulaGumbel
-
+from online_copula_experiments.common import (
+ TO_SCALE_COP
+)
 
 #%% Copulas
 
@@ -330,6 +332,7 @@ def bestcop(cops, u, X, X_cols, early_stopped=False, edge=None, application = No
                             }
                 }
                 for cop in cops:
+                    
             
                     estimator = MultivariateOnlineDistributionalRegressionPath(
                         distribution=copula_distributions_bivariate[cop],
@@ -341,7 +344,7 @@ def bestcop(cops, u, X, X_cols, early_stopped=False, edge=None, application = No
                         verbose=3,
                         max_iterations_inner=20,
                         max_iterations_outer=1,
-                        scale_inputs=False,
+                        scale_inputs=TO_SCALE_COP,
                         fit_intercept=True,
                         forget = 0,
                         )
