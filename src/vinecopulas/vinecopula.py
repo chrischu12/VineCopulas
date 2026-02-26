@@ -17,7 +17,7 @@ import os
 import importlib
 import sys
 from ondil.estimators import MultivariateOnlineDistributionalRegressionPath
-from ondil.links import FisherZLink, KendallsTauToParameter, Log, KendallsTauToParameterClayton, LogShiftTwo, GumbelLink, KendallsTauToParameterGumbel
+from ondil.links import FisherZLink, ParameterToKendallsTau, Log, ClaytonParameterToKendallsTau, LogShiftTwo, GumbelLink, GumbelParameterToKendallsTau
 from ondil.distributions import BivariateCopulaNormal, Normal, BivariateCopulaClayton, BivariateCopulaStudentT, BivariateCopulaGumbel
 from vinecopulas.bivariate import *
 
@@ -66,55 +66,55 @@ copulas = {
 copula_distributions = {
     1: BivariateCopulaNormal(
     link=FisherZLink(),
-    param_link=KendallsTauToParameter()
+    param_link=ParameterToKendallsTau()
 ), 
     2: BivariateCopulaStudentT(
     link_1 = FisherZLink(),
     link_2 = LogShiftTwo(),
-    param_link_1 = KendallsTauToParameter(),
-    param_link_2 = KendallsTauToParameter(),
+    param_link_1 = ParameterToKendallsTau(),
+    param_link_2 = ParameterToKendallsTau(),
 ),  
     31: BivariateCopulaClayton(
     link= Log(),
-    param_link=KendallsTauToParameterClayton(),
+    param_link=ClaytonParameterToKendallsTau(),
     family_code = 31,
 ), 
     32: BivariateCopulaClayton(
     link= Log(),
-    param_link=KendallsTauToParameterClayton(),
+    param_link=ClaytonParameterToKendallsTau(),
     family_code = 32,
 ), 
     33: BivariateCopulaClayton(
     link= Log(),
-    param_link=KendallsTauToParameterClayton(),
+    param_link=ClaytonParameterToKendallsTau(),
     family_code = 33,
 ), 
     34: BivariateCopulaClayton(
     link= Log(),
-    param_link=KendallsTauToParameterClayton(),
+    param_link=ClaytonParameterToKendallsTau(),
     family_code = 34,
 ), 
 
     41: BivariateCopulaGumbel(
     link=GumbelLink(),
-    param_link=KendallsTauToParameterGumbel(),
+    param_link=GumbelParameterToKendallsTau(),
     family_code=41,
 ),
 
     42: BivariateCopulaGumbel(
     link=GumbelLink(),
-    param_link=KendallsTauToParameterGumbel(),
+    param_link=GumbelParameterToKendallsTau(),
     family_code=42,
 ),
     43: BivariateCopulaGumbel(
     link=GumbelLink(),
-    param_link=KendallsTauToParameterGumbel(),
+    param_link=GumbelParameterToKendallsTau(),
     family_code=43,
 ),    
 
     44: BivariateCopulaGumbel(
     link=GumbelLink(),
-    param_link=KendallsTauToParameterGumbel(),
+    param_link=GumbelParameterToKendallsTau(),
     family_code=44,
 ),
 }
