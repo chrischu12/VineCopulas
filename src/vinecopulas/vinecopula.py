@@ -1557,8 +1557,12 @@ def fit_vinecopstructure(u1, copsi, a, X_df, online =0, E=None, printing = True,
             orderk["v2"] = v2k
             orderk2 = locals()["order" + str(t)].reset_index(drop=True)
             if online == 1: 
-                v1s = locals()["v1_" + str(t)].copy().reshape(1,-1)
-                v2s = locals()["v2_" + str(t)].copy().reshape(1,-1) 
+                if X.shape[0] == 1:
+                    v1s = locals()["v1_" + str(t)].copy().reshape(1,-1)
+                    v2s = locals()["v2_" + str(t)].copy().reshape(1,-1)
+                else: 
+                    v1s = locals()["v1_" + str(t)].copy()
+                    v2s = locals()["v2_" + str(t)].copy()         
             else:
                 v1s = locals()["v1_" + str(t)].copy()
                 v2s = locals()["v2_" + str(t)].copy()
@@ -1639,8 +1643,12 @@ def fit_vinecopstructure(u1, copsi, a, X_df, online =0, E=None, printing = True,
                 # calculate the conditional CDF
                 # pari = np.loadtxt(r'C:\Users\OEK-admin\OneDrive\Arbeit_Uni\Uni_Due\ProjectII\par.csv', delimiter=',', skiprows=1).reshape(-1, 1)
                 if online == 1:
-                    pari = pari[0].reshape(1, -1)   
-                    parj = parj[0].reshape(1, -1)   
+                    pari = pari[0].reshape(-1, 1)   
+                    parj = parj[0].reshape(-1, 1)   
+                    ui1 = ui1.reshape(-1, 1)
+                    ui2 = ui2.reshape(-1, 1)
+                    uj1 = uj1.reshape(-1, 1)
+                    uj2 = uj2.reshape(-1, 1)
                 v1igs = hfunc(copi, ui1, ui2, pari, un=uni,distribution=disti)
                 v2jgs = hfunc(copj, uj1, uj2, parj, un=unj,distribution=distj)
 

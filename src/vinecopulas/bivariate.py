@@ -24,7 +24,7 @@ import re
 
 
 from ondil.estimators import MultivariateOnlineDistributionalRegressionPath
-from ondil.links import FisherZLink, KendallsTauToParameter, Log, KendallsTauToParameterClayton, LogShiftTwo, GumbelLink, KendallsTauToParameterGumbel
+from ondil.links import FisherZLink, ParameterToKendallsTau, Log, ClaytonParameterToKendallsTau, LogShiftTwo, GumbelLink, GumbelParameterToKendallsTau
 from ondil.distributions import BivariateCopulaNormal, Normal, BivariateCopulaClayton, BivariateCopulaStudentT, BivariateCopulaGumbel
 from online_copula_experiments.common import (
  TO_SCALE_COP
@@ -52,55 +52,55 @@ copula_distributions_bivariate = {
 
     1: BivariateCopulaNormal(
     link=FisherZLink(),
-    param_link=KendallsTauToParameter()
+    param_link=ParameterToKendallsTau()
 ), 
     2: BivariateCopulaStudentT(
     link_1 = FisherZLink(),
     link_2 = LogShiftTwo(),
-    param_link_1 = KendallsTauToParameter(),
-    param_link_2 = KendallsTauToParameter(),
+    param_link_1 = ParameterToKendallsTau(),
+    param_link_2 = ParameterToKendallsTau(),
 ),  
     31: BivariateCopulaClayton(
     link= Log(),
-    param_link=KendallsTauToParameterClayton(),
+    param_link=ClaytonParameterToKendallsTau(),
     family_code = 31,
 ), 
     32: BivariateCopulaClayton(
     link= Log(),
-    param_link=KendallsTauToParameterClayton(),
+    param_link=ClaytonParameterToKendallsTau(),
     family_code = 32,
 ), 
     33: BivariateCopulaClayton(
     link= Log(),
-    param_link=KendallsTauToParameterClayton(),
+    param_link=ClaytonParameterToKendallsTau(),
     family_code = 33,
 ), 
     34: BivariateCopulaClayton(
     link= Log(),
-    param_link=KendallsTauToParameterClayton(),
+    param_link=ClaytonParameterToKendallsTau(),
     family_code = 34,
 ), 
 
     41: BivariateCopulaGumbel(
     link=GumbelLink(),
-    param_link=KendallsTauToParameterGumbel(),
+    param_link=GumbelParameterToKendallsTau(),
     family_code=41,
 ),
 
     42: BivariateCopulaGumbel(
     link=GumbelLink(),
-    param_link=KendallsTauToParameterGumbel(),
+    param_link=GumbelParameterToKendallsTau(),
     family_code=42,
 ),
     43: BivariateCopulaGumbel(
     link=GumbelLink(),
-    param_link=KendallsTauToParameterGumbel(),
+    param_link=GumbelParameterToKendallsTau(),
     family_code=43,
 ),    
 
     44: BivariateCopulaGumbel(
     link=GumbelLink(),
-    param_link=KendallsTauToParameterGumbel(),
+    param_link=GumbelParameterToKendallsTau(),
     family_code=44,
 ),
 }
@@ -441,15 +441,15 @@ def bestcop(cops, u, X, X_cols, early_stopped=False, edge=None, application = No
                     estimator = MultivariateOnlineDistributionalRegressionPath(
                         distribution=copula_distributions_bivariate[cop],
                         equation=equation,
-                        method="ols",
+                        method="lasso",
                         early_stopping=False,
                         early_stopping_criteria="bic",
                         iteration_along_diagonal=False,
                         verbose=3,
                         max_iterations_inner=20,
                         max_iterations_outer=1,
-                        scale_inputs=False,
-                        fit_intercept=True,
+                        scale_inputs=np.array([False, False, False, False, False, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True]),
+                        fit_intercept=False,
                         forget = 0,
                         )
                     #try:
@@ -482,7 +482,7 @@ def bestcop(cops, u, X, X_cols, early_stopped=False, edge=None, application = No
                         #    ESTIM.append(None)
             else:  
                 equation = {  
-                        0: { h: "intercept"
+                        0: { h: "all"
                             for h in range(1)
                         }
                 }
@@ -497,8 +497,8 @@ def bestcop(cops, u, X, X_cols, early_stopped=False, edge=None, application = No
                         verbose=3,
                         max_iterations_inner=20,
                         max_iterations_outer=1,
-                        scale_inputs=False,
-                        fit_intercept=True,
+                        scale_inputs=np.array([False, False, False, False, False, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True]),
+                        fit_intercept=False,
                         forget = 0,
                         )
                     #try:
