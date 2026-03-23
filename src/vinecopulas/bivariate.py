@@ -225,7 +225,7 @@ def fit_vine_copulas(cop, u):
 #%% best fit
 
 
-def bestcop(cops, u, X, X_cols, early_stopped=False, edge=None, application = None, t=None):
+def bestcop(cops, u, X, X_cols, early_stopped=False, edge=None, application = None, t=None, forget = None):
     """
     Fits the best copula to data based on a selected list of copulas to fit to using the AIC.
     
@@ -346,7 +346,7 @@ def bestcop(cops, u, X, X_cols, early_stopped=False, edge=None, application = No
                         max_iterations_outer=1,
                         scale_inputs=TO_SCALE_COP,
                         fit_intercept=True,
-                        forget = 0,
+                        forget = forget,
                         )
                     
                 #try:
@@ -396,7 +396,7 @@ def bestcop(cops, u, X, X_cols, early_stopped=False, edge=None, application = No
                         max_iterations_outer=1,
                         scale_inputs=False,
                         fit_intercept=True,
-                        forget = 0,
+                        forget = forget,
                         )
                     
                     #try:
@@ -441,16 +441,17 @@ def bestcop(cops, u, X, X_cols, early_stopped=False, edge=None, application = No
                     estimator = MultivariateOnlineDistributionalRegressionPath(
                         distribution=copula_distributions_bivariate[cop],
                         equation=equation,
-                        method="lasso",
+                        method="ols",
                         early_stopping=False,
                         early_stopping_criteria="bic",
                         iteration_along_diagonal=False,
                         verbose=3,
-                        max_iterations_inner=20,
+                        max_iterations_inner=30,
                         max_iterations_outer=1,
-                        scale_inputs=np.array([False, False, False, False, False, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True]),
+                        #scale_inputs=np.array([False, False, False, False, False, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True]),
+                        scale_inputs=False,
                         fit_intercept=False,
-                        forget = 0,
+                        forget = forget,
                         )
                     #try:
                     estimator.fit(X, u)
@@ -495,11 +496,12 @@ def bestcop(cops, u, X, X_cols, early_stopped=False, edge=None, application = No
                         early_stopping_criteria="bic",
                         iteration_along_diagonal=False,
                         verbose=3,
-                        max_iterations_inner=20,
+                        max_iterations_inner=30,
                         max_iterations_outer=1,
-                        scale_inputs=np.array([False, False, False, False, False, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True]),
+                        #scale_inputs=np.array([False, False, False, False, False, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True]),
+                        scale_inputs=False,
                         fit_intercept=False,
-                        forget = 0,
+                        forget = forget,
                         )
                     #try:
                     estimator.fit(X, u)
