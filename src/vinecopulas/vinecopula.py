@@ -1420,7 +1420,7 @@ def density_vinecop(u, M , P, C):
     
 
 # %% fitting vine copula with specific structure
-def fit_vinecopstructure(u1, copsi, a, X_df, online =0, E=None, printing = True,  min_ll_increase=1e-4, truncation = False, application = False):
+def fit_vinecopstructure(u1, copsi, a, X_df, online =0, E=None, printing = True,  min_ll_increase=1e-4, truncation = False, application = False, forget = False):
     """
     Fit a regular vine copula to data based on a known vine structure matrix.
 
