@@ -225,7 +225,7 @@ def fit_vine_copulas(cop, u):
 #%% best fit
 
 
-def bestcop(cops, u, X, X_cols, early_stopped=False, edge=None, application = None, t=None, forget = None):
+def bestcop(cops, u, X, X_cols, early_stopped=False, edge=None, application = None, t=None, forget = None, method = None):
     """
     Fits the best copula to data based on a selected list of copulas to fit to using the AIC.
     
@@ -441,7 +441,7 @@ def bestcop(cops, u, X, X_cols, early_stopped=False, edge=None, application = No
                     estimator = MultivariateOnlineDistributionalRegressionPath(
                         distribution=copula_distributions_bivariate[cop],
                         equation=equation,
-                        method="ols",
+                        method=method,
                         early_stopping=False,
                         early_stopping_criteria="bic",
                         iteration_along_diagonal=False,
@@ -491,7 +491,7 @@ def bestcop(cops, u, X, X_cols, early_stopped=False, edge=None, application = No
                     estimator = MultivariateOnlineDistributionalRegressionPath(
                         distribution=copula_distributions_bivariate[cop],
                         equation=equation,
-                        method="ols",
+                        method=method,
                         early_stopping=False,
                         early_stopping_criteria="bic",
                         iteration_along_diagonal=False,

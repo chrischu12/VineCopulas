@@ -1420,7 +1420,7 @@ def density_vinecop(u, M , P, C):
     
 
 # %% fitting vine copula with specific structure
-def fit_vinecopstructure(u1, copsi, a, X_df, online =0, E=None, printing = True,  min_ll_increase=1e-4, truncation = False, application = False, forget = False):
+def fit_vinecopstructure(u1, copsi, a, X_df, online =0, E=None, printing = True,  min_ll_increase=1e-4, truncation = False, application = False, forget = False, method = False):
     """
     Fit a regular vine copula to data based on a known vine structure matrix.
 
@@ -1508,7 +1508,7 @@ def fit_vinecopstructure(u1, copsi, a, X_df, online =0, E=None, printing = True,
                     estimator = orderk.estimator[j]
                     cop, dist, rho, aic, coef, loglik, estim = bestcop_online(estimator, u3, X)  
                 else:
-                    cop, dist, rho, aic, coef, loglik, estim = bestcop(copsi, u3, X, X_cols, edge=edge, application=application, t = t, forget = forget)  # fit the best copula
+                    cop, dist, rho, aic, coef, loglik, estim = bestcop(copsi, u3, X, X_cols, edge=edge, application=application, t = t, forget = forget, method = method)  # fit the best copula
 
                 rhos.append(rho)  # add parameters to rhos
                 coefs.append(coef)  # add coefficients to coefs
@@ -1660,7 +1660,7 @@ def fit_vinecopstructure(u1, copsi, a, X_df, online =0, E=None, printing = True,
                     estimator = orderk.estimator[k]
                     cop, dist, rho, aic, coef, loglik, estim = bestcop_online(estimator, u3, X)  
                 else:
-                    cop, dist, rho, aic, coef, loglik, estim = bestcop(copsi, u3, X, X_cols, early_stopped = early_stopped, edge=edge, application=application, t=t, forget = forget)  # fit the best copula
+                    cop, dist, rho, aic, coef, loglik, estim = bestcop(copsi, u3, X, X_cols, early_stopped = early_stopped, edge=edge, application=application, t=t, forget = forget, method = method)  # fit the best copula
 
                 rhos.append(rho)  # add parameters to rhos
                 coefs.append(coef)
@@ -1961,7 +1961,13 @@ def simulate_vinecop(a, x, beta, c, s, return_P=False):
                 Z2[:, i, k] = Vdir[:, i, int(n - Mm[i, k])] 
             else: 
                 Z2[:, i, k] = Vindir[:, i, int(n - Mm[i, k])]
-            P = copula_distributions[1].element_link_inverse(x @ beta, 0).reshape(-1, 1)
+            if beta.ndim == 2:
+                xb = x @ beta                         # (s,1)
+            elif beta.ndim == 3:
+                xb = np.einsum("ij,ijk->i", x, beta).reshape(-1, 1)  # (s,1)
+            else:
+                raise ValueError("beta must have shape (p,1) or (s,p,1)")
+            P = copula_distributions[1].element_link_inverse(xb, 0).reshape(-1, 1)
             if C[i, k] == 0:
                 P = np.zeros_like(P)
             else:
@@ -1976,7 +1982,13 @@ def simulate_vinecop(a, x, beta, c, s, return_P=False):
 
         for i in range(k + 1, n + 1)[::-1]:
             Z1[:, i, k] = Vdir[:, i, k]
-            P = copula_distributions[1].element_link_inverse(x @ beta, 0).reshape(-1, 1)
+                        if beta.ndim == 2:
+                xb = x @ beta                         # (s,1)
+            elif beta.ndim == 3:
+                xb = np.einsum("ij,ijk->i", x, beta).reshape(-1, 1)  # (s,1)
+            else:
+                raise ValueError("beta must have shape (p,1) or (s,p,1)")
+            P = copula_distributions[1].element_link_inverse(xb, 0).reshape(-1, 1)
             if C[i, k] == 0:
                 P = np.zeros_like(P)
             else:
