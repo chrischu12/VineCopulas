@@ -1982,7 +1982,7 @@ def simulate_vinecop(a, x, beta, c, s, return_P=False):
 
         for i in range(k + 1, n + 1)[::-1]:
             Z1[:, i, k] = Vdir[:, i, k]
-                        if beta.ndim == 2:
+            if beta.ndim == 2:
                 xb = x @ beta                         # (s,1)
             elif beta.ndim == 3:
                 xb = np.einsum("ij,ijk->i", x, beta).reshape(-1, 1)  # (s,1)
