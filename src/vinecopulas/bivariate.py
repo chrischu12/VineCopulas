@@ -225,7 +225,7 @@ def fit_vine_copulas(cop, u):
 #%% best fit
 
 
-def bestcop(cops, u, X, X_cols, early_stopped=False, edge=None, application = None, t=None, forget = None, method = None):
+def bestcop(cops, u, X, X_cols, early_stopped=False, edge=None, application = None, t=None, forget = None, method = None, fit_intercept = False, equation = None):
     """
     Fits the best copula to data based on a selected list of copulas to fit to using the AIC.
     
@@ -287,8 +287,6 @@ def bestcop(cops, u, X, X_cols, early_stopped=False, edge=None, application = No
         LOGLIK = []
         ESTIM = []
 
-   
-
         def get_index(cols, edge) -> np.ndarray:
             """
             Select columns for a given edge:
@@ -327,17 +325,18 @@ def bestcop(cops, u, X, X_cols, early_stopped=False, edge=None, application = No
         if application == True:
 
             if t == 0:
-                equation = {
-                            0: { 0:np.arange(X.shape[1])[get_index(X_cols, edge = edge)]
-                            }
-                }
+                if equation == None:
+                    equation = {0: { 0:np.arange(X.shape[1])[get_index(X_cols, edge = edge)]}}
+                else: 
+                    equation = equation
+
                 for cop in cops:
                     
             
                     estimator = MultivariateOnlineDistributionalRegressionPath(
                         distribution=copula_distributions_bivariate[cop],
                         equation=equation,
-                        method="lasso",
+                        method=method,
                         early_stopping=False,
                         early_stopping_criteria="bic",
                         iteration_along_diagonal=False,
@@ -345,88 +344,67 @@ def bestcop(cops, u, X, X_cols, early_stopped=False, edge=None, application = No
                         max_iterations_inner=20,
                         max_iterations_outer=1,
                         scale_inputs=TO_SCALE_COP,
-                        fit_intercept=True,
+                        fit_intercept=fit_intercept,
                         forget = forget,
+                        approx_fast_model_selection = False ,
                         )
                     
-                #try:
+                   # try:
                     estimator.fit(X, u)
-
                     if cop == 2:
                         par = estimator.predict_distribution_parameters(X)
                     else:
                         par = estimator.predict(X)
-
-                    AIC.append(2 + (2 * -estimator._current_likelihood))
-                    PAR.append(par)
-                    LOGLIK.append(estimator._current_likelihood)
-                    COEF.append(estimator.coef_)
-                    ESTIM.append(estimator)
-                #except Exception:
-                 #       if len(AIC) > 0:
-                  #          AIC.append(AIC[-1])
-                   #         PAR.append(PAR[-1])
-                    #        LOGLIK.append(LOGLIK[-1])
-                     #       COEF.append(COEF[-1])
-                      #      ESTIM.append(ESTIM[-1])
-                       # else:
-                        #    n_rows = u.shape[0]
-                         #   n_cols = X.shape[1]
-                          #  AIC.append(0)
-                           # PAR.append(np.zeros(n_rows).reshape(-1,1))
-                            #LOGLIK.append(0)
-                            #COEF.append(np.zeros(n_cols))
-                            #ESTIM.append(None)
-            else:  
-                equation = {  
-                        0: { 0: "intercept"
-                        }
-                }
-                for cop in cops:
-
-                    estimator = MultivariateOnlineDistributionalRegressionPath(
-                        distribution=copula_distributions_bivariate[cop],
-                        equation=equation,
-                        method="ols",
-                        early_stopping=False,
-                        early_stopping_criteria="bic",
-                        iteration_along_diagonal=False,
-                        verbose=3,
-                        max_iterations_inner=20,
-                        max_iterations_outer=1,
-                        scale_inputs=False,
-                        fit_intercept=True,
-                        forget = forget,
-                        )
-                    
-                    #try:
-                    estimator.fit(X, u)
-
-                    if cop == 2:
-                        par = estimator.predict_distribution_parameters(X)
-                    else:
-                        par = estimator.predict(X)
-
                     AIC.append(2 + (2 * -estimator._current_likelihood))
                     PAR.append(par)
                     LOGLIK.append(estimator._current_likelihood)
                     COEF.append(estimator.coef_)
                     ESTIM.append(estimator)
                     #except Exception:
-                        #if len(AIC) > 0:
-                        #    AIC.append(AIC[-1])
-                        #    PAR.append(PAR[-1])
-                        #    LOGLIK.append(LOGLIK[-1])
-                        #    COEF.append(COEF[-1])
-                        #    ESTIM.append(ESTIM[-1])
-                        #else:
-                        #    n_rows = u.shape[0]
-                        #    n_cols = X.shape[1]
-                        #    AIC.append(0)
-                        #    PAR.append(np.zeros(n_rows).reshape(-1,1))
-                        #    LOGLIK.append(0)
-                        #    COEF.append(np.zeros(n_cols))
-                        #    ESTIM.append(None)
+                      #  AIC.append(np.array([np.inf]))
+                       # PAR.append(np.zeros(u.shape[0]).reshape(-1, 1))
+                       # LOGLIK.append(np.array([-np.inf]))
+                       # COEF.append(np.zeros(X.shape[1]))
+                       # ESTIM.append(None)
+            else:  
+                equation = {  
+                       0: { 0: "intercept"
+                       }
+               }
+                for cop in cops:
+                    estimator = MultivariateOnlineDistributionalRegressionPath(
+                        distribution=copula_distributions_bivariate[cop],
+                        equation=equation,
+                        method=method,
+                        early_stopping=False,
+                        early_stopping_criteria="bic",
+                        iteration_along_diagonal=False,
+                        verbose=3,
+                        max_iterations_inner=20,
+                        max_iterations_outer=1,
+                        scale_inputs=TO_SCALE_COP,
+                        fit_intercept=fit_intercept,
+                        forget = forget,
+                        approx_fast_model_selection = False ,
+                        )
+                    
+                    #try:
+                    estimator.fit(X, u)
+                    if cop == 2:
+                        par = estimator.predict_distribution_parameters(X)
+                    else:
+                        par = estimator.predict(X)
+                    AIC.append(2 + (2 * -estimator._current_likelihood))
+                    PAR.append(par)
+                    LOGLIK.append(estimator._current_likelihood)
+                    COEF.append(estimator.coef_)
+                    ESTIM.append(estimator)
+                    #except Exception:
+                      #  AIC.append(np.array([np.inf]))
+                      #  PAR.append(np.zeros(u.shape[0]).reshape(-1, 1))
+                      #  LOGLIK.append(np.array([-np.inf]))
+                      #  COEF.append(np.zeros(X.shape[1]))
+                      #  ESTIM.append(None)
       
         else:
             if t == 0:
@@ -446,12 +424,13 @@ def bestcop(cops, u, X, X_cols, early_stopped=False, edge=None, application = No
                         early_stopping_criteria="bic",
                         iteration_along_diagonal=False,
                         verbose=3,
-                        max_iterations_inner=30,
+                        max_iterations_inner=20,
                         max_iterations_outer=1,
                         #scale_inputs=np.array([False, False, False, False, False, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True]),
-                        scale_inputs=False,
-                        fit_intercept=False,
+                        scale_inputs=True,
+                        fit_intercept=fit_intercept,
                         forget = forget,
+                        approx_fast_model_selection = False ,
                         )
                     #try:
                     estimator.fit(X, u)
@@ -496,12 +475,13 @@ def bestcop(cops, u, X, X_cols, early_stopped=False, edge=None, application = No
                         early_stopping_criteria="bic",
                         iteration_along_diagonal=False,
                         verbose=3,
-                        max_iterations_inner=30,
+                        max_iterations_inner=20,
                         max_iterations_outer=1,
                         #scale_inputs=np.array([False, False, False, False, False, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True]),
-                        scale_inputs=False,
-                        fit_intercept=False,
+                        scale_inputs=True,
+                        fit_intercept=fit_intercept,
                         forget = forget,
+                        approx_fast_model_selection = False ,
                         )
                     #try:
                     estimator.fit(X, u)

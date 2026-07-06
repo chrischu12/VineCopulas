@@ -1420,7 +1420,7 @@ def density_vinecop(u, M , P, C):
     
 
 # %% fitting vine copula with specific structure
-def fit_vinecopstructure(u1, copsi, a, X_df, online =0, E=None, printing = True,  min_ll_increase=1e-4, truncation = False, application = False, forget = False, method = False):
+def fit_vinecopstructure(u1, copsi, a, X_df, online = 0, E=None, printing = True,  min_ll_increase=1e-4, truncation = False, application = False, forget = False, method_tree_1 = False, method_tree_2plus =False, fit_intercept = False, equation_tree_1 = None, equation_tree_2plus = None):
     """
     Fit a regular vine copula to data based on a known vine structure matrix.
 
@@ -1508,7 +1508,7 @@ def fit_vinecopstructure(u1, copsi, a, X_df, online =0, E=None, printing = True,
                     estimator = orderk.estimator[j]
                     cop, dist, rho, aic, coef, loglik, estim = bestcop_online(estimator, u3, X)  
                 else:
-                    cop, dist, rho, aic, coef, loglik, estim = bestcop(copsi, u3, X, X_cols, edge=edge, application=application, t = t, forget = forget, method = method)  # fit the best copula
+                    cop, dist, rho, aic, coef, loglik, estim = bestcop(copsi, u3, X, X_cols, edge=edge, application=application, t = t, forget = forget, method = method_tree_1, fit_intercept = fit_intercept, equation = equation_tree_1 )   # fit the best copula
 
                 rhos.append(rho)  # add parameters to rhos
                 coefs.append(coef)  # add coefficients to coefs
@@ -1660,7 +1660,7 @@ def fit_vinecopstructure(u1, copsi, a, X_df, online =0, E=None, printing = True,
                     estimator = orderk.estimator[k]
                     cop, dist, rho, aic, coef, loglik, estim = bestcop_online(estimator, u3, X)  
                 else:
-                    cop, dist, rho, aic, coef, loglik, estim = bestcop(copsi, u3, X, X_cols, early_stopped = early_stopped, edge=edge, application=application, t=t, forget = forget, method = method)  # fit the best copula
+                    cop, dist, rho, aic, coef, loglik, estim = bestcop(copsi, u3, X, X_cols, early_stopped = early_stopped, edge=edge, application=application, t=t, forget = forget, method = method_tree_2plus, fit_intercept = fit_intercept, equation = equation_tree_2plus)  # fit the best copula
 
                 rhos.append(rho)  # add parameters to rhos
                 coefs.append(coef)
@@ -2378,7 +2378,7 @@ def fit_conditionalvine(u1, vint, copsi, vine="R", condition=1, printing=True):
             v1.append(int(i))  # add variable to v1
             v2.append(int(j))  # add variable to v2
             tauabs.append(
-                abs(st.kendalltau(u1[:, i], u1[:, j])[0])
+                abs(ruc.kendalltau(u1[:, i], u1[:, j])[0])
             )  # calculate the absolute kendall tau between v1 and v2 and add it to the taubs list
 
     order1 = pd.DataFrame(
