@@ -1417,7 +1417,7 @@ def density_vinecop(u, M , P, C):
     
 
 # %% fitting vine copula with specific structure
-def fit_vinecopstructure(u1, copsi, a, X_df, online = 0, E=None, printing = True,  min_ll_increase=1e-4, truncation = False, application = False, forget = False, method_tree_1 = False, method_tree_2plus =False, fit_intercept = False, equation_tree_1 = None, equation_tree_2plus = None):
+def fit_vinecopstructure(u1, copsi, a, X_df, online = 0, E=None, printing = True,  min_ll_increase=1e-4, truncation = False, application = False, forget = False, method_tree_1 = False, method_tree_2plus =False, fit_intercept = False, equation_tree_1 = None, equation_tree_2plus = None, scale_inputs_tree_1 = False, scale_inputs_tree_2plus = False):
     """
     Fit a regular vine copula to data based on a known vine structure matrix.
 
@@ -1505,7 +1505,7 @@ def fit_vinecopstructure(u1, copsi, a, X_df, online = 0, E=None, printing = True
                     estimator = orderk.estimator[j]
                     cop, dist, rho, aic, coef, loglik, estim = bestcop_online(estimator, u3, X)  
                 else:
-                    cop, dist, rho, aic, coef, loglik, estim = bestcop(copsi, u3, X, X_cols, edge=edge, application=application, t = t, forget = forget, method = method_tree_1, fit_intercept = fit_intercept, equation = equation_tree_1 )   # fit the best copula
+                    cop, dist, rho, aic, coef, loglik, estim = bestcop(copsi, u3, X, X_cols, edge=edge, application=application, t = t, forget = forget, method = method_tree_1, fit_intercept = fit_intercept, equation = equation_tree_1, scale_inputs = scale_inputs_tree_1 )   # fit the best copula
 
                 rhos.append(rho)  # add parameters to rhos
                 coefs.append(coef)  # add coefficients to coefs
@@ -1657,7 +1657,7 @@ def fit_vinecopstructure(u1, copsi, a, X_df, online = 0, E=None, printing = True
                     estimator = orderk.estimator[k]
                     cop, dist, rho, aic, coef, loglik, estim = bestcop_online(estimator, u3, X)  
                 else:
-                    cop, dist, rho, aic, coef, loglik, estim = bestcop(copsi, u3, X, X_cols, early_stopped = early_stopped, edge=edge, application=application, t=t, forget = forget, method = method_tree_2plus, fit_intercept = fit_intercept, equation = equation_tree_2plus)  # fit the best copula
+                    cop, dist, rho, aic, coef, loglik, estim = bestcop(copsi, u3, X, X_cols, early_stopped = early_stopped, edge=edge, application=application, t=t, forget = forget, method = method_tree_2plus, fit_intercept = fit_intercept, equation = equation_tree_2plus, scale_inputs = scale_inputs_tree_2plus)  # fit the best copula
 
                 rhos.append(rho)  # add parameters to rhos
                 coefs.append(coef)

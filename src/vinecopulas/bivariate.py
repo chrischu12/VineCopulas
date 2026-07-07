@@ -26,9 +26,6 @@ import re
 from ondil.estimators import MultivariateOnlineDistributionalRegressionPath
 from ondil.links import FisherZLink, ParameterToKendallsTau, Log, ClaytonParameterToKendallsTau, LogShiftTwo, GumbelLink, GumbelParameterToKendallsTau
 from ondil.distributions import BivariateCopulaNormal, Normal, BivariateCopulaClayton, BivariateCopulaStudentT, BivariateCopulaGumbel
-from online_copula_experiments.common import (
- TO_SCALE_COP
-)
 
 #%% Copulas
 
@@ -142,7 +139,7 @@ def get_copula_number(distribution_instance):
 #%% best fit
 
 
-def bestcop(cops, u, X, X_cols, early_stopped=False, edge=None, application = None, t=None, forget = None, method = None, fit_intercept = False, equation = None):
+def bestcop(cops, u, X, X_cols, early_stopped=False, edge=None, application = None, t=None, forget = None, method = None, fit_intercept = False, equation = None, scale_inputs = False):
     """
     Fits the best copula to data based on a selected list of copulas to fit to using the AIC.
     
@@ -260,7 +257,7 @@ def bestcop(cops, u, X, X_cols, early_stopped=False, edge=None, application = No
                         verbose=3,
                         max_iterations_inner=20,
                         max_iterations_outer=1,
-                        scale_inputs=TO_SCALE_COP,
+                        scale_inputs=scale_inputs,
                         fit_intercept=fit_intercept,
                         forget = forget,
                         approx_fast_model_selection = False ,
@@ -299,7 +296,7 @@ def bestcop(cops, u, X, X_cols, early_stopped=False, edge=None, application = No
                         verbose=3,
                         max_iterations_inner=20,
                         max_iterations_outer=1,
-                        scale_inputs=TO_SCALE_COP,
+                        scale_inputs=scale_inputs,
                         fit_intercept=fit_intercept,
                         forget = forget,
                         approx_fast_model_selection = False ,
