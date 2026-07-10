@@ -24,7 +24,7 @@ import re
 
 
 from ondil.estimators import MultivariateOnlineDistributionalRegressionPath
-from ondil.links import FisherZLink, ParameterToKendallsTau, Log, ClaytonParameterToKendallsTau, LogShiftTwo, GumbelLink, GumbelParameterToKendallsTau
+from ondil.links import FisherZLink, GaussianParameterToKendallsTau, Log, ClaytonParameterToKendallsTau, LogShiftTwo, GumbelLink, GumbelParameterToKendallsTau
 from ondil.distributions import BivariateCopulaNormal, Normal, BivariateCopulaClayton, BivariateCopulaStudentT, BivariateCopulaGumbel
 
 #%% Copulas
@@ -49,13 +49,13 @@ copula_distributions_bivariate = {
 
     1: BivariateCopulaNormal(
     link=FisherZLink(),
-    param_link=ParameterToKendallsTau()
+    param_link=GaussianParameterToKendallsTau()
 ), 
     2: BivariateCopulaStudentT(
     link_1 = FisherZLink(),
     link_2 = LogShiftTwo(),
-    param_link_1 = ParameterToKendallsTau(),
-    param_link_2 = ParameterToKendallsTau(),
+    param_link_1 = GaussianParameterToKendallsTau(),
+    param_link_2 = GaussianParameterToKendallsTau(),
 ),  
     31: BivariateCopulaClayton(
     link= Log(),
@@ -139,7 +139,7 @@ def get_copula_number(distribution_instance):
 #%% best fit
 
 
-def bestcop(cops, u, X, X_cols, early_stopped=False, edge=None, application = None, t=None, forget = None, method = None, fit_intercept = False, equation = None, scale_inputs = False):
+def bestcop(cops, u, X, X_cols, early_stopped=False, edge=None, forget = None, method = None, fit_intercept = False, equation = None, scale_inputs = False):
     """
     Fits the best copula to data based on a selected list of copulas to fit to using the AIC.
     
@@ -201,238 +201,41 @@ def bestcop(cops, u, X, X_cols, early_stopped=False, edge=None, application = No
         LOGLIK = []
         ESTIM = []
 
-        def get_index(cols, edge) -> np.ndarray:
-            """
-            Select columns for a given edge:
-            - edge-specific columns (r1_r2_ or r2_r1_)
-            - PLUS all non-pair-specific columns
+        # Resolve the equation for this edge. It may be supplied directly, as a
+        # callable ``(X_cols, edge) -> equation`` (e.g. for edge-specific covariate
+        # selection), or left as None to use all available covariates.
+        if callable(equation):
+            equation = equation(X_cols, edge)
+        elif equation is None:
+            equation = {0: {0: np.arange(X.shape[1])}}
 
-            cols: DataFrame or array-like of column names
-            edge: tuple/list of ints, e.g. (0, 1)
-            """
-            if isinstance(cols, pd.DataFrame):
-                cols_str = cols.columns.astype(str).to_numpy()
+        for cop in cops:
+            estimator = MultivariateOnlineDistributionalRegressionPath(
+                distribution=copula_distributions_bivariate[cop],
+                equation=equation,
+                method=method,
+                early_stopping=False,
+                early_stopping_criteria="bic",
+                iteration_along_diagonal=False,
+                verbose=3,
+                max_iterations_inner=20,
+                max_iterations_outer=1,
+                scale_inputs=scale_inputs,
+                fit_intercept=fit_intercept,
+                forget=forget,
+                approx_fast_model_selection=False,
+            )
+            estimator.fit(X, u)
+            if cop == 2:
+                par = estimator.predict_distribution_parameters(X)
             else:
-                cols_str = np.asarray(cols, dtype=str)
+                par = estimator.predict(X)
+            AIC.append(2 + (2 * -estimator._current_likelihood))
+            PAR.append(par)
+            LOGLIK.append(estimator._current_likelihood)
+            COEF.append(estimator.coef_)
+            ESTIM.append(estimator)
 
-            regions = ["1", "2", "3", "4", "5"]
-            r1 = regions[int(edge[0])]
-            r2 = regions[int(edge[1])]
-
-            # edge-specific prefixes
-            prefix_12 = f"{r1}_{r2}_"
-            prefix_21 = f"{r2}_{r1}_"
-
-            is_edge = (
-                np.char.startswith(cols_str, prefix_12)
-                | np.char.startswith(cols_str, prefix_21)
-            )
-
-            # detect any pair-specific prefix like "1_2_", "3_5_", etc.
-            is_any_pair = np.array(
-                [bool(re.match(r"^\d+_\d+_", c)) for c in cols_str]
-            )
-
-            # keep edge-specific OR non-pair-specific
-            return is_edge | (~is_any_pair)
-        
-        if application == True:
-
-            if t == 0:
-                if equation == None:
-                    equation = {0: { 0:np.arange(X.shape[1])[get_index(X_cols, edge = edge)]}}
-                else: 
-                    equation = equation
-
-                for cop in cops:
-                    
-            
-                    estimator = MultivariateOnlineDistributionalRegressionPath(
-                        distribution=copula_distributions_bivariate[cop],
-                        equation=equation,
-                        method=method,
-                        early_stopping=False,
-                        early_stopping_criteria="bic",
-                        iteration_along_diagonal=False,
-                        verbose=3,
-                        max_iterations_inner=20,
-                        max_iterations_outer=1,
-                        scale_inputs=scale_inputs,
-                        fit_intercept=fit_intercept,
-                        forget = forget,
-                        approx_fast_model_selection = False ,
-                        )
-                    
-                   # try:
-                    estimator.fit(X, u)
-                    if cop == 2:
-                        par = estimator.predict_distribution_parameters(X)
-                    else:
-                        par = estimator.predict(X)
-                    AIC.append(2 + (2 * -estimator._current_likelihood))
-                    PAR.append(par)
-                    LOGLIK.append(estimator._current_likelihood)
-                    COEF.append(estimator.coef_)
-                    ESTIM.append(estimator)
-                    #except Exception:
-                      #  AIC.append(np.array([np.inf]))
-                       # PAR.append(np.zeros(u.shape[0]).reshape(-1, 1))
-                       # LOGLIK.append(np.array([-np.inf]))
-                       # COEF.append(np.zeros(X.shape[1]))
-                       # ESTIM.append(None)
-            else:  
-                equation = {  
-                       0: { 0: "intercept"
-                       }
-               }
-                for cop in cops:
-                    estimator = MultivariateOnlineDistributionalRegressionPath(
-                        distribution=copula_distributions_bivariate[cop],
-                        equation=equation,
-                        method=method,
-                        early_stopping=False,
-                        early_stopping_criteria="bic",
-                        iteration_along_diagonal=False,
-                        verbose=3,
-                        max_iterations_inner=20,
-                        max_iterations_outer=1,
-                        scale_inputs=scale_inputs,
-                        fit_intercept=fit_intercept,
-                        forget = forget,
-                        approx_fast_model_selection = False ,
-                        )
-                    
-                    #try:
-                    estimator.fit(X, u)
-                    if cop == 2:
-                        par = estimator.predict_distribution_parameters(X)
-                    else:
-                        par = estimator.predict(X)
-                    AIC.append(2 + (2 * -estimator._current_likelihood))
-                    PAR.append(par)
-                    LOGLIK.append(estimator._current_likelihood)
-                    COEF.append(estimator.coef_)
-                    ESTIM.append(estimator)
-                    #except Exception:
-                      #  AIC.append(np.array([np.inf]))
-                      #  PAR.append(np.zeros(u.shape[0]).reshape(-1, 1))
-                      #  LOGLIK.append(np.array([-np.inf]))
-                      #  COEF.append(np.zeros(X.shape[1]))
-                      #  ESTIM.append(None)
-      
-        else:
-            if t == 0:
-                equation = {
-                        0: {
-                            h: np.arange(X.shape[1])
-                            for h in range(1)
-                            }
-                }
-                
-                for cop in cops:
-                    estimator = MultivariateOnlineDistributionalRegressionPath(
-                        distribution=copula_distributions_bivariate[cop],
-                        equation=equation,
-                        method=method,
-                        early_stopping=False,
-                        early_stopping_criteria="bic",
-                        iteration_along_diagonal=False,
-                        verbose=3,
-                        max_iterations_inner=20,
-                        max_iterations_outer=1,
-                        #scale_inputs=np.array([False, False, False, False, False, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True]),
-                        scale_inputs=True,
-                        fit_intercept=fit_intercept,
-                        forget = forget,
-
-                        approx_fast_model_selection = False ,
-
-
-
-                        )
-                    #try:
-                    estimator.fit(X, u)
-
-                    if cop == 2:
-                        par = estimator.predict_distribution_parameters(X)
-                    else:
-                        par = estimator.predict(X)
-
-                    AIC.append(2 + (2 * -estimator._current_likelihood))
-                    PAR.append(par)
-                    LOGLIK.append(estimator._current_likelihood)
-                    COEF.append(estimator.coef_)
-                    ESTIM.append(estimator)
-                    #except Exception:
-                        #if len(AIC) > 0:
-                        #    AIC.append(AIC[-1])
-                        #    PAR.append(PAR[-1])
-                        #    LOGLIK.append(LOGLIK[-1])
-                        #    COEF.append(COEF[-1])
-                        #    ESTIM.append(ESTIM[-1])
-                        #else:
-                        #    n_rows = u.shape[0]
-                        #    n_cols = X.shape[1]
-                        #    AIC.append(0)
-                        #    PAR.append(np.zeros(n_rows).reshape(-1,1))
-                        #    LOGLIK.append(0)
-                        #    COEF.append(np.zeros(n_cols))
-                        #    ESTIM.append(None)
-            else:  
-                equation = {  
-                        0: { h: "all"
-                            for h in range(1)
-                        }
-                }
-                for cop in cops:
-                    estimator = MultivariateOnlineDistributionalRegressionPath(
-                        distribution=copula_distributions_bivariate[cop],
-                        equation=equation,
-                        method=method,
-                        early_stopping=False,
-                        early_stopping_criteria="bic",
-                        iteration_along_diagonal=False,
-                        verbose=3,
-                        max_iterations_inner=20,
-                        max_iterations_outer=1,
-                        #scale_inputs=np.array([False, False, False, False, False, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True]),
-                        scale_inputs=True,
-                        fit_intercept=fit_intercept,
-                        forget = forget,
-
-                        approx_fast_model_selection = False ,
-
-
-
-                        )
-                    #try:
-                    estimator.fit(X, u)
-
-                    if cop == 2:
-                        par = estimator.predict_distribution_parameters(X)
-                    else:
-                        par = estimator.predict(X)
-
-                    AIC.append(2 + (2 * -estimator._current_likelihood))
-                    PAR.append(par)
-                    LOGLIK.append(estimator._current_likelihood)
-                    COEF.append(estimator.coef_)
-                    ESTIM.append(estimator)
-                    #except Exception:
-                        #if len(AIC) > 0:
-                        #    AIC.append(AIC[-1])
-                        #    PAR.append(PAR[-1])
-                        #    LOGLIK.append(LOGLIK[-1])
-                        #    COEF.append(COEF[-1])
-                        #    ESTIM.append(ESTIM[-1])
-                        #else:
-                        #    n_rows = u.shape[0]
-                        #    n_cols = X.shape[1]
-                        #    AIC.append(0)
-                        #    PAR.append(np.zeros(n_rows).reshape(-1,1))
-                        #    LOGLIK.append(0)
-                        #    COEF.append(np.zeros(n_cols))
-                        #    ESTIM.append(None)
 
 
 
