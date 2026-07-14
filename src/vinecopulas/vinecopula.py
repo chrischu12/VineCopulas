@@ -1885,7 +1885,7 @@ def sample_vinecop(a, p, c, s):
 
     return X2
 
-def simulate_vinecop(a, x, beta, c, s, return_P=False):
+def simulate_vinecop(a, x, beta, c, s, return_P=False, rng=None):
     """
     Generate random samples from an R-vine.
 
@@ -1946,16 +1946,22 @@ def simulate_vinecop(a, x, beta, c, s, return_P=False):
     # Z1
     Z1 = np.empty((s, M.shape[0], M.shape[0]))
     Z1[:] = np.nan
-    U = np.random.uniform(0, 1, (s, M.shape[0]))  # random uniform
+    # Draw the copula sample from an explicit generator when provided, so that
+    # simulations remain reproducible and independent across parallel workers.
+    # Falling back to ``np.random`` preserves the original global-RNG behavior
+    # for every existing caller that does not pass ``rng``.
+    if rng is None:
+        rng = np.random
+    U = rng.uniform(0, 1, (s, M.shape[0]))  # random uniform
     Vdir[:, -1, :] = U.copy()
     X = np.flip(U.copy(), 1)
     n = M.shape[0] - 1
     # sampling algorithm
     for k in range(n)[::-1]:
         for i in range(k + 1, n + 1):
-            if M[i, k] == Mm[i, k]: 
-                Z2[:, i, k] = Vdir[:, i, int(n - Mm[i, k])] 
-            else: 
+            if M[i, k] == Mm[i, k]:
+                Z2[:, i, k] = Vdir[:, i, int(n - Mm[i, k])]
+            else:
                 Z2[:, i, k] = Vindir[:, i, int(n - Mm[i, k])]
             if beta.ndim == 2:
                 xb = x @ beta                         # (s,1)
