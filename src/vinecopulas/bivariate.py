@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """
 Created on Thu Feb 22 16:39:03 2024
-
-
 """
 
 import warnings
@@ -441,7 +439,7 @@ def hfuncinverse(cop, ui, y, par, un = 1, distribution = None):
        
     return uii
 
-#%% negative likelyhood
+#%% negative likelihood
 def neg_likelihood(par,cop,u):
     """
     Computes the negative likelihood function.

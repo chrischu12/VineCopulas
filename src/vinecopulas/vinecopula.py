@@ -2,45 +2,18 @@
 # %%
 """
 Created on Thu Feb 22 16:40:09 2024
-
-
 """
+
 import warnings
 warnings.filterwarnings("ignore")
 import numpy as np
 import pandas as pd
 import scipy.stats as st
-from itertools import product
 import networkx as nx
 import matplotlib.pyplot as plt
-import os
-import importlib
-import sys
-from ondil.estimators import MultivariateOnlineDistributionalRegressionPath
 from ondil.links import FisherZLink, GaussianParameterToKendallsTau, Log, ClaytonParameterToKendallsTau, LogShiftTwo, GumbelLink, GumbelParameterToKendallsTau
-from ondil.distributions import BivariateCopulaNormal, Normal, BivariateCopulaClayton, BivariateCopulaStudentT, BivariateCopulaGumbel
+from ondil.distributions import BivariateCopulaNormal, BivariateCopulaClayton, BivariateCopulaStudentT, BivariateCopulaGumbel
 from vinecopulas.bivariate import *
-
-#  Add your local package to the path
-#ondil_path = r"C:\Users\OEK-admin\OneDrive\Arbeit_Uni\Uni_Due\Project II\ondil"
-#if ondil_path not in sys.path:
-#    sys.path.insert(0, ondil_path)
-
-
-#  Import ondil classes
-#ondil_src_path = os.path.join(ondil_path, "src")
-#if ondil_src_path not in sys.path:
- #   sys.path.insert(0, ondil_src_path)
-
-#from ondil.estimators import MultivariateOnlineDistributionalRegressionPath
-#from ondil.links import  GumbelLink, FisherZLink, KendallsTauToParameter, KendallsTauToParameterClayton, Log, KendallsTauToParameterGumbel, LogShiftTwo
-#from ondil.distributions import BivariateCopulaNormal, BivariateCopulaClayton, BivariateCopulaGumbel, BivariateCopulaStudentT
-
-#vinecopulas_path = r"C:\Users\OEK-admin\OneDrive\Arbeit_Uni\Uni_Due\Project II\VineCopulas"
-#vinecopulas_src_path = os.path.join(vinecopulas_path, "src")
-#if vinecopulas_src_path not in sys.path:
- #   sys.path.insert(0, vinecopulas_src_path)
-
 
 
 
@@ -59,8 +32,6 @@ copulas = {
     43: "Gumbel III",
     44: "Gumbel IV",
 }
-
-
 
 
 copula_distributions = {
