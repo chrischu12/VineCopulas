@@ -1,3 +1,35 @@
+> ### This is a modified copy of VineCopulas — not the original package
+>
+> Forked from [VU-IVM/VineCopulas](https://github.com/VU-IVM/VineCopulas)
+> (version 2.0.2, upstream commit `07911c4`, 26 November 2024) and modified
+> between **19 November 2025 and 26 August 2026** by Christian Schulz, for the
+> replication package of "Online Conditional Vine Copulas: Forecasting
+> Electricity Demand" (Schulz, Hanck, Hirsch and Ziel).
+>
+> Changes, in brief:
+>
+> - `src/vinecopulas/vinecopula.py` — added `fit_vinecop`,
+>   `fit_vinecopstructure`, `density_vinecop` and `simulate_vinecop`, which
+>   allow the pair-copula parameters to depend on covariates and to be updated
+>   online; the original fitting and simulation routines were replaced.
+> - `src/vinecopulas/bivariate.py` — reduced to the families and h-functions the
+>   paper uses, with covariate-dependent parameters.
+> - `src/vinecopulas/marginals.py` — **removed**. Marginal distributions are
+>   estimated with `ondil` in this work, so code importing
+>   `vinecopulas.marginals` will not run against this copy.
+>
+> The README below is the upstream one. It describes the original package and
+> has **not** been updated for these changes, so its API examples, the PyPI
+> release and the linked documentation refer to upstream VineCopulas, not to
+> this copy. For the original, unmodified package use the upstream repository
+> or `pip install VineCopulas`.
+>
+> Like the original, this copy is distributed under the GNU General Public
+> License v3.0 — see `LICENSE`. Copyright of the unmodified portions remains
+> with Judith Claassen (Institute for Environmental Studies, VU Amsterdam).
+
+---
+
 # VineCopulas
 <img align="right" width="200" src="https://github.com/VU-IVM/VineCopulas/raw/main/doc/logogif.gif">
 

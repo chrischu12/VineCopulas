@@ -4,6 +4,16 @@
 Created on Thu Feb 22 16:40:09 2024
 """
 
+# MODIFIED FILE. Original: VineCopulas 2.0.2 by Judith Claassen (VU-IVM),
+# https://github.com/VU-IVM/VineCopulas, GPL-3.0.
+# Modified 2025-11-19 to 2026-08-26 by Christian Schulz for the replication
+# package of "Online Conditional Vine Copulas: Forecasting Electricity Demand":
+# added `fit_vinecop`, `fit_vinecopstructure`, `density_vinecop` and
+# `simulate_vinecop`, which let the pair-copula parameters depend on covariates
+# and be updated online; the original fitting and simulation routines were
+# replaced.
+# SPDX-License-Identifier: GPL-3.0-only
+
 import warnings
 warnings.filterwarnings("ignore")
 import numpy as np
