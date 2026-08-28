@@ -1618,7 +1618,6 @@ def fit_vinecopstructure(u1, copsi, a, X_df, online = 0, E=None, printing = True
                         unj = 2
                         vj1 = v1j
                 # calculate the conditional CDF
-                # pari = np.loadtxt(r'C:\Users\OEK-admin\OneDrive\Arbeit_Uni\Uni_Due\ProjectII\par.csv', delimiter=',', skiprows=1).reshape(-1, 1)
                 if online == 1:
                     pari = pari[0].reshape(-1, 1)   
                     parj = parj[0].reshape(-1, 1)   
