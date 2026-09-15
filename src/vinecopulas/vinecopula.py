@@ -1274,15 +1274,16 @@ def fit_vinecop(u1, X_df, copsi, vine="R", online = 0, E=None, printing=True, di
             for j in range(len(orde)):
                 arr = np.array(orde.node.iloc[j][:2]).astype(int)
                 if sum(np.isin(akn, arr)) == 2:
-                    orderj = order.loc[[orde.index[j]]]
+                    orderj = order.loc[[orde.index[j]]].copy()
                     p[i, k] = orderj.rhos.iloc[0]
                     c[i, k] = orderj.cop.iloc[0]
                     b[i,k] = orderj.coefs.iloc[0]
                     e[i,k] = orderj.estimators.iloc[0]
+                    node_col = orderj.columns.get_loc("node")
                     if i == 0:
-                        orderj.node.iloc[0] = list(akn)
+                        orderj.iat[0, node_col] = list(akn)
                     else:
-                        orderj.node.iloc[0] = (
+                        orderj.iat[0, node_col] = (
                             list(akn) + ["|"] + list((ak.astype(int)[:i])[::-1])
                         )
                     orderk = pd.concat([orderk, orderj]).reset_index(drop=True)
@@ -1732,15 +1733,16 @@ def fit_vinecopstructure(u1, copsi, a, X_df, online = 0, E=None, printing = True
             for j in range(len(orde)):
                 arr = np.array(orde.node.iloc[j][:2]).astype(int)
                 if sum(np.isin(akn, arr)) == 2:
-                    orderj = order.loc[[orde.index[j]]]
+                    orderj = order.loc[[orde.index[j]]].copy()
                     p[i, k] = orderj.rhos.iloc[0]
                     c[i, k] = orderj.cop.iloc[0]
                     b[i,k] = orderj.coefs.iloc[0]
                     e[i,k] = orderj.estimators.iloc[0]
+                    node_col = orderj.columns.get_loc("node")
                     if i == 0:
-                        orderj.node.iloc[0] = list(akn)
+                        orderj.iat[0, node_col] = list(akn)
                     else:
-                        orderj.node.iloc[0] = (
+                        orderj.iat[0, node_col] = (
                             list(akn) + ["|"] + list((ak.astype(int)[:i])[::-1])
                         )
                     orderk = pd.concat([orderk, orderj]).reset_index(drop=True)
