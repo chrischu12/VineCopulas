@@ -1249,7 +1249,7 @@ def fit_vinecop(u1, X_df, copsi, vine="R", online = 0, E=None, printing=True, di
                 if np.isin(s, arr) == True:
                     inde = orde.iloc[k].name
                     a[j, ii] = arr[arr != s][0]
-                    order["used"][inde] = 1
+                    order.loc[inde, "used"] = 1
 
     a[0, dimen - 1] = a[0, dimen - 2]  # set first sample in sampling order
     orderk = pd.DataFrame(columns=order.columns)
@@ -1706,7 +1706,7 @@ def fit_vinecopstructure(u1, copsi, a, X_df, online = 0, E=None, printing = True
                 if np.isin(s, arr) == True:
                     inde = orde.iloc[k].name
                     a[j, ii] = arr[arr != s][0]
-                    order["used"][inde] = 1
+                    order.loc[inde, "used"] = 1
 
     a[0, dimen - 1] = a[0, dimen - 2]  # set first sample in sampling order
     orderk = pd.DataFrame(columns=order.columns)
