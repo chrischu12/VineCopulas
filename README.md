@@ -2,9 +2,9 @@
 >
 > Forked from [VU-IVM/VineCopulas](https://github.com/VU-IVM/VineCopulas)
 > (version 2.0.2, upstream commit `07911c4`, 26 November 2024) and modified
-> between **19 November 2025 and 26 August 2026** by Christian Schulz, for the
+> between **19 November 2025 and 26 August 2026** by Christian Jobelius Schulz, for the
 > replication package of "Online Conditional Vine Copulas: Forecasting
-> Electricity Demand" (Schulz, Hanck, Hirsch and Ziel).
+> Electricity Demand" (Jobelius Schulz, Hanck, Hirsch and Ziel).
 >
 > Changes, in brief:
 >
